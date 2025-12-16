@@ -97,7 +97,7 @@ tqdm>=4.62
 ### 1. Run Validation + Cost Sweep
 
 ```bash
-python simulations/emergency_simulation_v3.py
+python simulations/emergency_simulation.py
 ```
 
 **Output**:
