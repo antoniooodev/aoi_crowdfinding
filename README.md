@@ -307,7 +307,8 @@ The static simulation (i.i.d. volunteer positions) validates the analytical P_de
 The React-based visualization (`simulations/emergency_visualization.jsx`) provides an interactive exploration of the under-participation phenomenon.
 
 <p align="center">
-  <img src="docs/figures/ui_screenshot.png" alt="Interactive Demo Screenshot" width="800"/>
+  <img src="https://i.ibb.co/HTf0n6Tz/simulation-validation.png"
+   alt="Interactive Demo Screenshot" width="800"/>
 </p>
 <p align="center"><em>Figure 4: Interactive simulation comparing Nash equilibrium (left) vs social optimum (right) under identical initial conditions. The batch run feature provides statistical validation.</em></p>
 
