@@ -15,6 +15,7 @@
 7. [Results Analysis](#7-results-analysis)
 8. [Visualization Guidelines](#8-visualization-guidelines)
 9. [Execution Checklist](#9-execution-checklist)
+10. [Interactive Demo (React)](#10-interactive-demo-react)
 
 ---
 
@@ -27,7 +28,8 @@ aoi_crowdfinding/
 │
 ├── docs/
 │   ├── formal_model.md              # Theoretical model (Phase 1-2)
-│   └── simulation_pipeline.md       # This document
+│   ├── simulation_pipeline.md       # This document
+│   └── VALIDATION_VS_DEMONSTRATION.md # Validation methodology
 │
 ├── src/
 │   ├── __init__.py
@@ -55,6 +57,16 @@ aoi_crowdfinding/
 │   ├── exp05_sensitivity.py
 │   └── run_all.py
 │
+├── demos/                           # Interactive demonstrations
+│   └── emergency/
+│       ├── emergency_simulation.py  # Python simulation (static + dynamic)
+│       └── ui/                      # React frontend
+│           ├── src/
+│           │   ├── App.jsx
+│           │   └── emergency_visualization.jsx  # Main visualization
+│           ├── package.json
+│           └── vite.config.js
+│
 ├── results/
 │   ├── data/                        # Raw numerical results
 │   │   └── .gitkeep
@@ -71,15 +83,15 @@ aoi_crowdfinding/
 
 ## 1.2 File Descriptions
 
-| File | Purpose | Dependencies |
-|------|---------|--------------|
-| `config.py` | Centralized parameters, dataclasses | None |
-| `spatial.py` | Geometry, positions, coverage | numpy |
-| `aoi.py` | AoI formulas, trajectories | numpy, spatial |
-| `game.py` | NE solver, welfare, PoA | numpy, aoi |
-| `simulation.py` | Monte Carlo engine | numpy, spatial, aoi |
-| `stackelberg.py` | Incentive optimization | numpy, game |
-| `visualization.py` | Publication plots | matplotlib, numpy |
+| File               | Purpose                             | Dependencies        |
+| ------------------ | ----------------------------------- | ------------------- |
+| `config.py`        | Centralized parameters, dataclasses | None                |
+| `spatial.py`       | Geometry, positions, coverage       | numpy               |
+| `aoi.py`           | AoI formulas, trajectories          | numpy, spatial      |
+| `game.py`          | NE solver, welfare, PoA             | numpy, aoi          |
+| `simulation.py`    | Monte Carlo engine                  | numpy, spatial, aoi |
+| `stackelberg.py`   | Incentive optimization              | numpy, game         |
+| `visualization.py` | Publication plots                   | matplotlib, numpy   |
 
 ---
 
@@ -143,6 +155,7 @@ setup(
 ## 3.1 Configuration Module (`config.py`)
 
 ### Purpose
+
 Centralized parameter management using dataclasses for type safety and validation.
 
 ### Specification
@@ -161,12 +174,12 @@ class PhysicalParams:
     """Physical environment parameters."""
     L: float = 100.0              # Area side length [meters]
     R: float = 10.0               # Detection radius [meters]
-    
+
     @property
     def rho(self) -> float:
         """Coverage ratio (single volunteer)."""
         return np.pi * self.R**2 / self.L**2
-    
+
     def __post_init__(self):
         assert self.L > 0, "Area side must be positive"
         assert 0 < self.R < self.L, "Radius must be in (0, L)"
@@ -178,7 +191,7 @@ class GameParams:
     N: int = 100                  # Number of volunteers
     B: float = 10.0               # Benefit scaling factor
     c: float = 1.0                # Participation cost
-    
+
     def __post_init__(self):
         assert self.N > 0, "Must have positive volunteers"
         assert self.B > 0, "Benefit must be positive"
@@ -191,7 +204,7 @@ class SimulationParams:
     T: int = 10000                # Time slots per run
     n_runs: int = 1000            # Monte Carlo runs
     seed: Optional[int] = 42      # Random seed (None for random)
-    
+
     def __post_init__(self):
         assert self.T > 0, "Must have positive time slots"
         assert self.n_runs > 0, "Must have positive runs"
@@ -203,27 +216,27 @@ class SimConfig:
     physical: PhysicalParams = field(default_factory=PhysicalParams)
     game: GameParams = field(default_factory=GameParams)
     simulation: SimulationParams = field(default_factory=SimulationParams)
-    
+
     @property
     def L(self) -> float:
         return self.physical.L
-    
+
     @property
     def R(self) -> float:
         return self.physical.R
-    
+
     @property
     def rho(self) -> float:
         return self.physical.rho
-    
+
     @property
     def N(self) -> int:
         return self.game.N
-    
+
     @property
     def B(self) -> float:
         return self.game.B
-    
+
     @property
     def c(self) -> float:
         return self.game.c
@@ -248,19 +261,20 @@ EXPERIMENT_CONFIG = ExperimentGrid()
 
 ### Interface
 
-| Class | Key Attributes | Key Methods |
-|-------|----------------|-------------|
-| `PhysicalParams` | L, R | `rho` (property) |
-| `GameParams` | N, B, c | — |
-| `SimulationParams` | T, n_runs, seed | — |
-| `SimConfig` | physical, game, simulation | All properties |
-| `ExperimentGrid` | N_values, R_values, c_values | — |
+| Class              | Key Attributes               | Key Methods      |
+| ------------------ | ---------------------------- | ---------------- |
+| `PhysicalParams`   | L, R                         | `rho` (property) |
+| `GameParams`       | N, B, c                      | —                |
+| `SimulationParams` | T, n_runs, seed              | —                |
+| `SimConfig`        | physical, game, simulation   | All properties   |
+| `ExperimentGrid`   | N_values, R_values, c_values | —                |
 
 ---
 
 ## 3.2 Spatial Module (`spatial.py`)
 
 ### Purpose
+
 Handle 2D geometry: volunteer positions, target placement, coverage calculations.
 
 ### Specification
@@ -281,7 +295,7 @@ def generate_positions(
 ) -> NDArray[np.float64]:
     """
     Generate n uniformly distributed positions in [0, L]^2.
-    
+
     Parameters
     ----------
     n : int
@@ -290,7 +304,7 @@ def generate_positions(
         Side length of square area
     seed : int, optional
         Random seed for reproducibility
-    
+
     Returns
     -------
     positions : ndarray of shape (n, 2)
@@ -306,14 +320,14 @@ def generate_target(
 ) -> NDArray[np.float64]:
     """
     Generate single target position uniformly in [0, L]^2.
-    
+
     Parameters
     ----------
     L : float
         Side length of square area
     seed : int, optional
         Random seed
-    
+
     Returns
     -------
     target : ndarray of shape (2,)
@@ -329,14 +343,14 @@ def compute_distances(
 ) -> NDArray[np.float64]:
     """
     Compute Euclidean distances from each position to target.
-    
+
     Parameters
     ----------
     positions : ndarray of shape (n, 2)
         Volunteer positions
     target : ndarray of shape (2,)
         Target position
-    
+
     Returns
     -------
     distances : ndarray of shape (n,)
@@ -351,14 +365,14 @@ def coverage_mask(
 ) -> NDArray[np.bool_]:
     """
     Determine which volunteers cover the target.
-    
+
     Parameters
     ----------
     distances : ndarray of shape (n,)
         Distances to target
     R : float
         Detection radius
-    
+
     Returns
     -------
     mask : ndarray of shape (n,) of bool
@@ -374,7 +388,7 @@ def count_covering(
 ) -> int:
     """
     Count number of volunteers covering the target.
-    
+
     Parameters
     ----------
     positions : ndarray of shape (n, 2)
@@ -383,7 +397,7 @@ def count_covering(
         Target position
     R : float
         Detection radius
-    
+
     Returns
     -------
     count : int
@@ -396,9 +410,9 @@ def count_covering(
 def analytical_coverage_prob(k: int, R: float, L: float) -> float:
     """
     Compute analytical coverage probability with k active volunteers.
-    
+
     P_det(k) = 1 - (1 - rho)^k  where rho = pi*R^2/L^2
-    
+
     Parameters
     ----------
     k : int
@@ -407,7 +421,7 @@ def analytical_coverage_prob(k: int, R: float, L: float) -> float:
         Detection radius
     L : float
         Area side length
-    
+
     Returns
     -------
     prob : float
@@ -428,7 +442,7 @@ def empirical_coverage_prob(
 ) -> Tuple[float, float]:
     """
     Estimate coverage probability via Monte Carlo simulation.
-    
+
     Parameters
     ----------
     k : int
@@ -441,7 +455,7 @@ def empirical_coverage_prob(
         Number of Monte Carlo samples
     seed : int, optional
         Random seed
-    
+
     Returns
     -------
     mean : float
@@ -451,17 +465,17 @@ def empirical_coverage_prob(
     """
     if k <= 0:
         return 0.0, 0.0
-    
+
     rng = np.random.default_rng(seed)
     successes = 0
-    
+
     for _ in range(n_samples):
         positions = rng.uniform(0, L, size=(k, 2))
         target = rng.uniform(0, L, size=2)
         distances = np.linalg.norm(positions - target, axis=1)
         if np.any(distances <= R):
             successes += 1
-    
+
     mean = successes / n_samples
     std_err = np.sqrt(mean * (1 - mean) / n_samples)
     return mean, std_err
@@ -474,7 +488,7 @@ def coverage_probability_vectorized(
 ) -> NDArray[np.float64]:
     """
     Vectorized analytical coverage probability for array of k values.
-    
+
     Parameters
     ----------
     k_values : ndarray of int
@@ -483,7 +497,7 @@ def coverage_probability_vectorized(
         Detection radius
     L : float
         Area side length
-    
+
     Returns
     -------
     probs : ndarray of float
@@ -495,16 +509,16 @@ def coverage_probability_vectorized(
 
 ### Interface Summary
 
-| Function | Input | Output |
-|----------|-------|--------|
-| `generate_positions` | n, L, seed | (n, 2) array |
-| `generate_target` | L, seed | (2,) array |
-| `compute_distances` | positions, target | (n,) array |
-| `coverage_mask` | distances, R | (n,) bool array |
-| `count_covering` | positions, target, R | int |
-| `analytical_coverage_prob` | k, R, L | float |
-| `empirical_coverage_prob` | k, R, L, n_samples | (mean, std_err) |
-| `coverage_probability_vectorized` | k_values, R, L | array |
+| Function                          | Input                | Output          |
+| --------------------------------- | -------------------- | --------------- |
+| `generate_positions`              | n, L, seed           | (n, 2) array    |
+| `generate_target`                 | L, seed              | (2,) array      |
+| `compute_distances`               | positions, target    | (n,) array      |
+| `coverage_mask`                   | distances, R         | (n,) bool array |
+| `count_covering`                  | positions, target, R | int             |
+| `analytical_coverage_prob`        | k, R, L              | float           |
+| `empirical_coverage_prob`         | k, R, L, n_samples   | (mean, std_err) |
+| `coverage_probability_vectorized` | k_values, R, L       | array           |
 
 ### Test Cases
 
@@ -518,12 +532,12 @@ class TestPositionGeneration:
     def test_shape(self):
         pos = generate_positions(100, 50.0, seed=42)
         assert pos.shape == (100, 2)
-    
+
     def test_bounds(self):
         pos = generate_positions(1000, 50.0, seed=42)
         assert np.all(pos >= 0)
         assert np.all(pos <= 50.0)
-    
+
     def test_reproducibility(self):
         pos1 = generate_positions(10, 50.0, seed=42)
         pos2 = generate_positions(10, 50.0, seed=42)
@@ -533,15 +547,15 @@ class TestPositionGeneration:
 class TestCoverage:
     def test_zero_volunteers(self):
         assert analytical_coverage_prob(0, 10.0, 100.0) == 0.0
-    
+
     def test_monotonicity(self):
         probs = [analytical_coverage_prob(k, 10.0, 100.0) for k in range(101)]
         assert all(probs[i] <= probs[i+1] for i in range(100))
-    
+
     def test_limit(self):
         prob = analytical_coverage_prob(10000, 10.0, 100.0)
         assert prob > 0.999
-    
+
     def test_empirical_matches_analytical(self):
         k, R, L = 50, 10.0, 100.0
         analytical = analytical_coverage_prob(k, R, L)
@@ -555,7 +569,7 @@ class TestDistances:
         target = np.array([5.0, 5.0])
         dist = compute_distances(pos, target)
         assert dist[0] == 0.0
-    
+
     def test_known_distance(self):
         pos = np.array([[0.0, 0.0]])
         target = np.array([3.0, 4.0])
@@ -568,6 +582,7 @@ class TestDistances:
 ## 3.3 AoI Module (`aoi.py`)
 
 ### Purpose
+
 Compute Age of Information metrics: expected AoI, trajectories, time-averages.
 
 ### Specification
@@ -585,14 +600,14 @@ from .spatial import analytical_coverage_prob
 def expected_aoi(P_det: float) -> float:
     """
     Compute expected time-average AoI given detection probability.
-    
+
     E[Δ] = 1/P_det - 1
-    
+
     Parameters
     ----------
     P_det : float
         Detection probability per slot
-    
+
     Returns
     -------
     aoi : float
@@ -608,7 +623,7 @@ def expected_aoi(P_det: float) -> float:
 def expected_aoi_from_k(k: int, R: float, L: float) -> float:
     """
     Compute expected AoI for k active volunteers.
-    
+
     Parameters
     ----------
     k : int
@@ -617,7 +632,7 @@ def expected_aoi_from_k(k: int, R: float, L: float) -> float:
         Detection radius
     L : float
         Area side length
-    
+
     Returns
     -------
     aoi : float
@@ -630,7 +645,7 @@ def expected_aoi_from_k(k: int, R: float, L: float) -> float:
 def aoi_vectorized(k_values: NDArray[np.int_], R: float, L: float) -> NDArray[np.float64]:
     """
     Vectorized AoI computation for array of k values.
-    
+
     Parameters
     ----------
     k_values : ndarray of int
@@ -639,7 +654,7 @@ def aoi_vectorized(k_values: NDArray[np.int_], R: float, L: float) -> NDArray[np
         Detection radius
     L : float
         Area side length
-    
+
     Returns
     -------
     aoi_values : ndarray of float
@@ -657,7 +672,7 @@ def simulate_aoi_trajectory(
 ) -> NDArray[np.int_]:
     """
     Simulate AoI trajectory over T time slots.
-    
+
     Parameters
     ----------
     P_det : float
@@ -666,7 +681,7 @@ def simulate_aoi_trajectory(
         Number of time slots
     seed : int, optional
         Random seed
-    
+
     Returns
     -------
     trajectory : ndarray of shape (T,)
@@ -674,7 +689,7 @@ def simulate_aoi_trajectory(
     """
     rng = np.random.default_rng(seed)
     trajectory = np.zeros(T, dtype=np.int64)
-    
+
     current_aoi = 0
     for t in range(T):
         if rng.random() < P_det:
@@ -682,7 +697,7 @@ def simulate_aoi_trajectory(
         else:
             current_aoi += 1
         trajectory[t] = current_aoi
-    
+
     return trajectory
 
 
@@ -693,7 +708,7 @@ def simulate_aoi_trajectory_fast(
 ) -> NDArray[np.int_]:
     """
     Fast vectorized AoI trajectory simulation.
-    
+
     Parameters
     ----------
     P_det : float
@@ -702,52 +717,52 @@ def simulate_aoi_trajectory_fast(
         Number of time slots
     seed : int, optional
         Random seed
-    
+
     Returns
     -------
     trajectory : ndarray of shape (T,)
         AoI value at each time slot
     """
     rng = np.random.default_rng(seed)
-    
+
     # Generate detection events
     detections = rng.random(T) < P_det
-    
+
     # Find detection times
     detection_times = np.where(detections)[0]
-    
+
     if len(detection_times) == 0:
         # No detections: AoI increases linearly
         return np.arange(T)
-    
+
     # Build trajectory
     trajectory = np.zeros(T, dtype=np.int64)
-    
+
     # Before first detection
     trajectory[:detection_times[0]] = np.arange(detection_times[0])
-    
+
     # Between detections
     for i in range(len(detection_times) - 1):
         start = detection_times[i]
         end = detection_times[i + 1]
         trajectory[start:end] = np.arange(end - start)
-    
+
     # After last detection
     last = detection_times[-1]
     trajectory[last:] = np.arange(T - last)
-    
+
     return trajectory
 
 
 def time_average_aoi(trajectory: NDArray[np.int_]) -> float:
     """
     Compute time-average AoI from trajectory.
-    
+
     Parameters
     ----------
     trajectory : ndarray
         AoI values over time
-    
+
     Returns
     -------
     avg_aoi : float
@@ -759,12 +774,12 @@ def time_average_aoi(trajectory: NDArray[np.int_]) -> float:
 def peak_aoi(trajectory: NDArray[np.int_]) -> int:
     """
     Compute peak (maximum) AoI from trajectory.
-    
+
     Parameters
     ----------
     trajectory : ndarray
         AoI values over time
-    
+
     Returns
     -------
     peak : int
@@ -776,14 +791,14 @@ def peak_aoi(trajectory: NDArray[np.int_]) -> int:
 def aoi_percentile(trajectory: NDArray[np.int_], percentile: float) -> float:
     """
     Compute percentile of AoI distribution.
-    
+
     Parameters
     ----------
     trajectory : ndarray
         AoI values over time
     percentile : float
         Percentile (0-100)
-    
+
     Returns
     -------
     value : float
@@ -795,12 +810,12 @@ def aoi_percentile(trajectory: NDArray[np.int_], percentile: float) -> float:
 def detection_times(trajectory: NDArray[np.int_]) -> NDArray[np.int_]:
     """
     Extract detection times from trajectory (where AoI resets to 0).
-    
+
     Parameters
     ----------
     trajectory : ndarray
         AoI values over time
-    
+
     Returns
     -------
     times : ndarray
@@ -810,7 +825,7 @@ def detection_times(trajectory: NDArray[np.int_]) -> NDArray[np.int_]:
     resets = np.where(trajectory == 0)[0]
     if len(resets) == 0:
         return np.array([], dtype=np.int64)
-    
+
     # Filter to actual resets (not consecutive zeros)
     mask = np.concatenate([[True], np.diff(resets) > 1])
     return resets[mask]
@@ -819,12 +834,12 @@ def detection_times(trajectory: NDArray[np.int_]) -> NDArray[np.int_]:
 def inter_detection_times(trajectory: NDArray[np.int_]) -> NDArray[np.int_]:
     """
     Compute inter-detection times from trajectory.
-    
+
     Parameters
     ----------
     trajectory : ndarray
         AoI values over time
-    
+
     Returns
     -------
     idt : ndarray
@@ -839,9 +854,9 @@ def inter_detection_times(trajectory: NDArray[np.int_]) -> NDArray[np.int_]:
 def marginal_aoi_reduction(k: int, R: float, L: float) -> float:
     """
     Compute marginal AoI reduction from adding k-th volunteer.
-    
+
     δΔ(k) = Δ(k-1) - Δ(k)
-    
+
     Parameters
     ----------
     k : int
@@ -850,7 +865,7 @@ def marginal_aoi_reduction(k: int, R: float, L: float) -> float:
         Detection radius
     L : float
         Area side length
-    
+
     Returns
     -------
     reduction : float
@@ -865,18 +880,18 @@ def marginal_aoi_reduction(k: int, R: float, L: float) -> float:
 
 ### Interface Summary
 
-| Function | Input | Output |
-|----------|-------|--------|
-| `expected_aoi` | P_det | float |
-| `expected_aoi_from_k` | k, R, L | float |
-| `aoi_vectorized` | k_values, R, L | array |
-| `simulate_aoi_trajectory` | P_det, T, seed | (T,) array |
+| Function                       | Input          | Output     |
+| ------------------------------ | -------------- | ---------- |
+| `expected_aoi`                 | P_det          | float      |
+| `expected_aoi_from_k`          | k, R, L        | float      |
+| `aoi_vectorized`               | k_values, R, L | array      |
+| `simulate_aoi_trajectory`      | P_det, T, seed | (T,) array |
 | `simulate_aoi_trajectory_fast` | P_det, T, seed | (T,) array |
-| `time_average_aoi` | trajectory | float |
-| `peak_aoi` | trajectory | int |
-| `detection_times` | trajectory | array |
-| `inter_detection_times` | trajectory | array |
-| `marginal_aoi_reduction` | k, R, L | float |
+| `time_average_aoi`             | trajectory     | float      |
+| `peak_aoi`                     | trajectory     | int        |
+| `detection_times`              | trajectory     | array      |
+| `inter_detection_times`        | trajectory     | array      |
+| `marginal_aoi_reduction`       | k, R, L        | float      |
 
 ### Test Cases
 
@@ -889,13 +904,13 @@ from src.aoi import *
 class TestExpectedAoI:
     def test_zero_detection(self):
         assert expected_aoi(0.0) == np.inf
-    
+
     def test_certain_detection(self):
         assert expected_aoi(1.0) == 0.0
-    
+
     def test_half_detection(self):
         assert expected_aoi(0.5) == 1.0
-    
+
     def test_formula(self):
         P = 0.3
         expected = 1.0 / P - 1.0
@@ -907,7 +922,7 @@ class TestAoIFromK:
         R, L = 10.0, 100.0
         aoi_values = [expected_aoi_from_k(k, R, L) for k in range(1, 101)]
         assert all(aoi_values[i] >= aoi_values[i+1] for i in range(99))
-    
+
     def test_zero_volunteers(self):
         assert expected_aoi_from_k(0, 10.0, 100.0) == np.inf
 
@@ -916,11 +931,11 @@ class TestTrajectory:
     def test_shape(self):
         traj = simulate_aoi_trajectory(0.5, 1000, seed=42)
         assert traj.shape == (1000,)
-    
+
     def test_non_negative(self):
         traj = simulate_aoi_trajectory(0.5, 1000, seed=42)
         assert np.all(traj >= 0)
-    
+
     def test_convergence(self):
         """Test that simulated average converges to theoretical."""
         P_det = 0.3
@@ -936,10 +951,10 @@ class TestFastVsSlow:
         """Test that fast and slow implementations give same statistics."""
         P_det = 0.4
         T = 10000
-        
+
         traj_slow = simulate_aoi_trajectory(P_det, T, seed=42)
         traj_fast = simulate_aoi_trajectory_fast(P_det, T, seed=42)
-        
+
         # Same trajectory with same seed
         np.testing.assert_array_equal(traj_slow, traj_fast)
 ```
@@ -949,6 +964,7 @@ class TestFastVsSlow:
 ## 3.4 Game Theory Module (`game.py`)
 
 ### Purpose
+
 Compute Nash equilibrium, social optimum, utilities, and Price of Anarchy.
 
 ### Specification
@@ -967,16 +983,16 @@ from .aoi import expected_aoi_from_k
 def benefit_function(P_det: float, B: float) -> float:
     """
     Compute benefit from detection probability.
-    
+
     f(Δ) = B * P_det  (simplified form)
-    
+
     Parameters
     ----------
     P_det : float
         Detection probability
     B : float
         Maximum benefit
-    
+
     Returns
     -------
     benefit : float
@@ -988,9 +1004,9 @@ def benefit_function(P_det: float, B: float) -> float:
 def utility_active(k: int, R: float, L: float, B: float, c: float) -> float:
     """
     Compute utility for an active volunteer when k total are active.
-    
+
     U(active; k) = B * P_det(k) - c
-    
+
     Parameters
     ----------
     k : int
@@ -1003,7 +1019,7 @@ def utility_active(k: int, R: float, L: float, B: float, c: float) -> float:
         Benefit parameter
     c : float
         Participation cost
-    
+
     Returns
     -------
     utility : float
@@ -1016,9 +1032,9 @@ def utility_active(k: int, R: float, L: float, B: float, c: float) -> float:
 def utility_inactive(k: int, R: float, L: float, B: float) -> float:
     """
     Compute utility for an inactive volunteer when k are active.
-    
+
     U(inactive; k) = B * P_det(k)
-    
+
     Parameters
     ----------
     k : int
@@ -1029,7 +1045,7 @@ def utility_inactive(k: int, R: float, L: float, B: float) -> float:
         Area side length
     B : float
         Benefit parameter
-    
+
     Returns
     -------
     utility : float
@@ -1042,9 +1058,9 @@ def utility_inactive(k: int, R: float, L: float, B: float) -> float:
 def marginal_utility(k: int, R: float, L: float, B: float, c: float) -> float:
     """
     Compute marginal utility of participation.
-    
+
     ΔU(k) = U(active; k+1) - U(inactive; k) = B * [P_det(k+1) - P_det(k)] - c
-    
+
     Parameters
     ----------
     k : int
@@ -1057,7 +1073,7 @@ def marginal_utility(k: int, R: float, L: float, B: float, c: float) -> float:
         Benefit parameter
     c : float
         Participation cost
-    
+
     Returns
     -------
     marginal : float
@@ -1077,7 +1093,7 @@ def find_nash_equilibrium(
 ) -> int:
     """
     Find symmetric Nash equilibrium number of active volunteers.
-    
+
     Parameters
     ----------
     N : int
@@ -1090,29 +1106,29 @@ def find_nash_equilibrium(
         Benefit parameter
     c : float
         Participation cost
-    
+
     Returns
     -------
     k_star : int
         NE number of active volunteers
     """
     rho = np.pi * R**2 / L**2
-    
+
     # Check boundary cases
     if c <= 0:
         return N
     if c >= B * rho:
         return 0
-    
+
     # Find k* such that B*rho*(1-rho)^(k*-1) >= c > B*rho*(1-rho)^k*
     # Solving: k* = floor(1 + ln(c/(B*rho)) / ln(1-rho))
-    
+
     k_star_continuous = 1 + np.log(c / (B * rho)) / np.log(1 - rho)
     k_star = int(np.floor(k_star_continuous))
-    
+
     # Clamp to valid range
     k_star = max(0, min(N, k_star))
-    
+
     return k_star
 
 
@@ -1125,11 +1141,11 @@ def find_nash_equilibrium_search(
 ) -> int:
     """
     Find NE by exhaustive search (verification method).
-    
+
     Parameters
     ----------
     N, R, L, B, c : parameters
-    
+
     Returns
     -------
     k_star : int
@@ -1143,25 +1159,25 @@ def find_nash_equilibrium_search(
             u_deviate_inactive = utility_inactive(k - 1, R, L, B)
             if u_active < u_deviate_inactive:
                 continue
-        
+
         # Condition 2: Inactive volunteers don't want to deviate
         if k < N:
             u_inactive = utility_inactive(k, R, L, B)
             u_deviate_active = utility_active(k + 1, R, L, B, c)
             if u_inactive < u_deviate_active:
                 continue
-        
+
         return k
-    
+
     return 0  # Fallback
 
 
 def social_welfare(k: int, N: int, R: float, L: float, B: float, c: float) -> float:
     """
     Compute social welfare with k active volunteers.
-    
+
     W(k) = N * B * P_det(k) - k * c
-    
+
     Parameters
     ----------
     k : int
@@ -1169,7 +1185,7 @@ def social_welfare(k: int, N: int, R: float, L: float, B: float, c: float) -> fl
     N : int
         Total volunteers
     R, L, B, c : parameters
-    
+
     Returns
     -------
     welfare : float
@@ -1188,29 +1204,29 @@ def find_social_optimum(
 ) -> int:
     """
     Find socially optimal number of active volunteers.
-    
+
     Parameters
     ----------
     N, R, L, B, c : parameters
-    
+
     Returns
     -------
     k_opt : int
         Socially optimal active volunteers
     """
     rho = np.pi * R**2 / L**2
-    
+
     # Check boundary
     if c >= N * B * rho:
         return 0
-    
+
     # Analytical solution: k_opt = floor(1 + ln(c/(N*B*rho)) / ln(1-rho))
     k_opt_continuous = 1 + np.log(c / (N * B * rho)) / np.log(1 - rho)
     k_opt = int(np.floor(k_opt_continuous))
-    
+
     # Clamp to valid range
     k_opt = max(0, min(N, k_opt))
-    
+
     return k_opt
 
 
@@ -1223,11 +1239,11 @@ def find_social_optimum_search(
 ) -> int:
     """
     Find social optimum by exhaustive search.
-    
+
     Parameters
     ----------
     N, R, L, B, c : parameters
-    
+
     Returns
     -------
     k_opt : int
@@ -1246,13 +1262,13 @@ def price_of_anarchy(
 ) -> float:
     """
     Compute Price of Anarchy.
-    
+
     PoA = W(k_opt) / W(k*)
-    
+
     Parameters
     ----------
     N, R, L, B, c : parameters
-    
+
     Returns
     -------
     poa : float
@@ -1260,13 +1276,13 @@ def price_of_anarchy(
     """
     k_star = find_nash_equilibrium(N, R, L, B, c)
     k_opt = find_social_optimum(N, R, L, B, c)
-    
+
     W_star = social_welfare(k_star, N, R, L, B, c)
     W_opt = social_welfare(k_opt, N, R, L, B, c)
-    
+
     if W_star <= 0:
         return np.inf
-    
+
     return W_opt / W_star
 
 
@@ -1279,13 +1295,13 @@ def participation_gap(
 ) -> int:
     """
     Compute participation gap between social optimum and NE.
-    
+
     Δk = k_opt - k*
-    
+
     Parameters
     ----------
     N, R, L, B, c : parameters
-    
+
     Returns
     -------
     gap : int
@@ -1305,32 +1321,32 @@ def analyze_equilibrium(
 ) -> Dict:
     """
     Complete equilibrium analysis.
-    
+
     Parameters
     ----------
     N, R, L, B, c : parameters
-    
+
     Returns
     -------
     results : dict
         Dictionary containing all equilibrium metrics
     """
     rho = np.pi * R**2 / L**2
-    
+
     k_star = find_nash_equilibrium(N, R, L, B, c)
     k_opt = find_social_optimum(N, R, L, B, c)
-    
+
     P_det_star = analytical_coverage_prob(k_star, R, L)
     P_det_opt = analytical_coverage_prob(k_opt, R, L)
-    
+
     aoi_star = expected_aoi_from_k(k_star, R, L)
     aoi_opt = expected_aoi_from_k(k_opt, R, L)
-    
+
     W_star = social_welfare(k_star, N, R, L, B, c)
     W_opt = social_welfare(k_opt, N, R, L, B, c)
-    
+
     poa = W_opt / W_star if W_star > 0 else np.inf
-    
+
     return {
         'N': N,
         'R': R,
@@ -1353,17 +1369,17 @@ def analyze_equilibrium(
 
 ### Interface Summary
 
-| Function | Input | Output |
-|----------|-------|--------|
-| `utility_active` | k, R, L, B, c | float |
-| `utility_inactive` | k, R, L, B | float |
-| `marginal_utility` | k, R, L, B, c | float |
-| `find_nash_equilibrium` | N, R, L, B, c | int |
-| `social_welfare` | k, N, R, L, B, c | float |
-| `find_social_optimum` | N, R, L, B, c | int |
-| `price_of_anarchy` | N, R, L, B, c | float |
-| `participation_gap` | N, R, L, B, c | int |
-| `analyze_equilibrium` | N, R, L, B, c | dict |
+| Function                | Input            | Output |
+| ----------------------- | ---------------- | ------ |
+| `utility_active`        | k, R, L, B, c    | float  |
+| `utility_inactive`      | k, R, L, B       | float  |
+| `marginal_utility`      | k, R, L, B, c    | float  |
+| `find_nash_equilibrium` | N, R, L, B, c    | int    |
+| `social_welfare`        | k, N, R, L, B, c | float  |
+| `find_social_optimum`   | N, R, L, B, c    | int    |
+| `price_of_anarchy`      | N, R, L, B, c    | float  |
+| `participation_gap`     | N, R, L, B, c    | int    |
+| `analyze_equilibrium`   | N, R, L, B, c    | dict   |
 
 ### Test Cases
 
@@ -1390,18 +1406,18 @@ class TestNashEquilibrium:
                 k_formula = find_nash_equilibrium(N, 10.0, 100.0, 10.0, c)
                 k_search = find_nash_equilibrium_search(N, 10.0, 100.0, 10.0, c)
                 assert k_formula == k_search, f"Mismatch at N={N}, c={c}"
-    
+
     def test_ne_is_equilibrium(self):
         """Verify NE satisfies equilibrium conditions."""
         N, R, L, B, c = 100, 10.0, 100.0, 10.0, 1.0
         k_star = find_nash_equilibrium(N, R, L, B, c)
-        
+
         if k_star > 0:
             # Active don't want to deviate
             u_active = utility_active(k_star, R, L, B, c)
             u_deviate = utility_inactive(k_star - 1, R, L, B)
             assert u_active >= u_deviate - 1e-9
-        
+
         if k_star < N:
             # Inactive don't want to deviate
             u_inactive = utility_inactive(k_star, R, L, B)
@@ -1417,7 +1433,7 @@ class TestSocialOptimum:
                 k_formula = find_social_optimum(N, 10.0, 100.0, 10.0, c)
                 k_search = find_social_optimum_search(N, 10.0, 100.0, 10.0, c)
                 assert k_formula == k_search, f"Mismatch at N={N}, c={c}"
-    
+
     def test_optimum_geq_ne(self):
         """Social optimum >= Nash equilibrium."""
         for N in [50, 100, 200]:
@@ -1441,6 +1457,7 @@ class TestPoA:
 ## 3.5 Stackelberg Module (`stackelberg.py`)
 
 ### Purpose
+
 Analyze Stackelberg game with platform incentives.
 
 ### Specification
@@ -1465,15 +1482,15 @@ def induced_equilibrium(
 ) -> int:
     """
     Compute NE induced by incentive p.
-    
+
     With incentive p, effective cost is (c - p).
-    
+
     Parameters
     ----------
     p : float
         Per-volunteer incentive payment
     N, R, L, B, c : parameters
-    
+
     Returns
     -------
     k : int
@@ -1492,15 +1509,15 @@ def optimal_incentive_for_target(
 ) -> float:
     """
     Compute incentive needed to induce target participation k_target.
-    
+
     p* = c - B * rho * (1 - rho)^(k_target - 1)
-    
+
     Parameters
     ----------
     k_target : int
         Target number of active volunteers
     R, L, B, c : parameters
-    
+
     Returns
     -------
     p : float
@@ -1508,11 +1525,11 @@ def optimal_incentive_for_target(
     """
     if k_target <= 0:
         return 0.0
-    
+
     rho = np.pi * R**2 / L**2
     threshold = B * rho * (1 - rho) ** (k_target - 1)
     p_star = c - threshold
-    
+
     return max(0, p_star)
 
 
@@ -1525,11 +1542,11 @@ def optimal_incentive(
 ) -> float:
     """
     Compute optimal incentive to implement social optimum.
-    
+
     Parameters
     ----------
     N, R, L, B, c : parameters
-    
+
     Returns
     -------
     p_star : float
@@ -1549,15 +1566,15 @@ def total_incentive_cost(
 ) -> float:
     """
     Compute total incentive payment by platform.
-    
+
     Total = p * k(p)
-    
+
     Parameters
     ----------
     p : float
         Per-volunteer incentive
     N, R, L, B, c : parameters
-    
+
     Returns
     -------
     total : float
@@ -1578,13 +1595,13 @@ def platform_objective(
 ) -> float:
     """
     Compute platform's objective (welfare minus incentive cost).
-    
+
     V(p) = W(k(p)) - p * k(p)
          = N * B * P_det(k) - k * c - p * k
          = N * B * P_det(k) - k * (c + p)
-    
+
     Note: This equals social welfare since incentives are transfers.
-    
+
     Parameters
     ----------
     p : float
@@ -1592,7 +1609,7 @@ def platform_objective(
     N, R, L, B, c : parameters
     budget : float, optional
         Maximum total incentive budget
-    
+
     Returns
     -------
     objective : float
@@ -1600,10 +1617,10 @@ def platform_objective(
     """
     k = induced_equilibrium(p, N, R, L, B, c)
     total_payment = p * k
-    
+
     if budget is not None and total_payment > budget:
         return -np.inf
-    
+
     # Platform objective = social welfare (transfers cancel)
     return social_welfare(k, N, R, L, B, c)
 
@@ -1619,7 +1636,7 @@ def find_optimal_incentive_search(
 ) -> Tuple[float, int, float]:
     """
     Find optimal incentive by grid search.
-    
+
     Parameters
     ----------
     N, R, L, B, c : parameters
@@ -1627,7 +1644,7 @@ def find_optimal_incentive_search(
         Maximum total incentive
     resolution : int
         Grid resolution
-    
+
     Returns
     -------
     p_star : float
@@ -1638,25 +1655,25 @@ def find_optimal_incentive_search(
         Resulting social welfare
     """
     p_values = np.linspace(0, c, resolution)
-    
+
     best_p = 0.0
     best_k = 0
     best_welfare = -np.inf
-    
+
     for p in p_values:
         k = induced_equilibrium(p, N, R, L, B, c)
-        
+
         # Check budget constraint
         if budget is not None and p * k > budget:
             continue
-        
+
         welfare = social_welfare(k, N, R, L, B, c)
-        
+
         if welfare > best_welfare:
             best_welfare = welfare
             best_p = p
             best_k = k
-    
+
     return best_p, best_k, best_welfare
 
 
@@ -1670,13 +1687,13 @@ def analyze_stackelberg(
 ) -> Dict:
     """
     Complete Stackelberg analysis.
-    
+
     Parameters
     ----------
     N, R, L, B, c : parameters
     budget : float, optional
         Maximum total incentive
-    
+
     Returns
     -------
     results : dict
@@ -1685,18 +1702,18 @@ def analyze_stackelberg(
     # No-incentive baseline
     k_ne = find_nash_equilibrium(N, R, L, B, c)
     W_ne = social_welfare(k_ne, N, R, L, B, c)
-    
+
     # Social optimum (unconstrained)
     k_opt = find_social_optimum(N, R, L, B, c)
     W_opt = social_welfare(k_opt, N, R, L, B, c)
-    
+
     # Optimal incentive for social optimum
     p_opt = optimal_incentive(N, R, L, B, c)
     total_payment_opt = p_opt * k_opt
-    
+
     # Check if budget allows social optimum
     budget_sufficient = budget is None or total_payment_opt <= budget
-    
+
     if budget_sufficient:
         k_stack = k_opt
         p_stack = p_opt
@@ -1706,7 +1723,7 @@ def analyze_stackelberg(
         p_stack, k_stack, W_stack = find_optimal_incentive_search(
             N, R, L, B, c, budget=budget
         )
-    
+
     return {
         'N': N,
         'R': R,
@@ -1743,13 +1760,13 @@ def incentive_sensitivity(
 ) -> Dict[str, np.ndarray]:
     """
     Analyze how optimal incentive varies with cost.
-    
+
     Parameters
     ----------
     N, R, L, B : parameters
     c_values : array
         Cost values to analyze
-    
+
     Returns
     -------
     results : dict of arrays
@@ -1766,45 +1783,46 @@ def incentive_sensitivity(
         'welfare_opt': np.zeros(n),
         'poa': np.zeros(n),
     }
-    
+
     for i, c in enumerate(c_values):
         k_ne = find_nash_equilibrium(N, R, L, B, c)
         k_opt = find_social_optimum(N, R, L, B, c)
         p_star = optimal_incentive(N, R, L, B, c)
-        
+
         results['k_ne'][i] = k_ne
         results['k_opt'][i] = k_opt
         results['p_star'][i] = p_star
         results['total_incentive'][i] = p_star * k_opt
         results['welfare_ne'][i] = social_welfare(k_ne, N, R, L, B, c)
         results['welfare_opt'][i] = social_welfare(k_opt, N, R, L, B, c)
-        
+
         if results['welfare_ne'][i] > 0:
             results['poa'][i] = results['welfare_opt'][i] / results['welfare_ne'][i]
         else:
             results['poa'][i] = np.inf
-    
+
     return results
 ```
 
 ### Interface Summary
 
-| Function | Input | Output |
-|----------|-------|--------|
-| `induced_equilibrium` | p, N, R, L, B, c | int |
-| `optimal_incentive_for_target` | k_target, R, L, B, c | float |
-| `optimal_incentive` | N, R, L, B, c | float |
-| `total_incentive_cost` | p, N, R, L, B, c | float |
-| `platform_objective` | p, N, R, L, B, c, budget | float |
-| `find_optimal_incentive_search` | N, R, L, B, c, budget | (p, k, welfare) |
-| `analyze_stackelberg` | N, R, L, B, c, budget | dict |
-| `incentive_sensitivity` | N, R, L, B, c_values | dict of arrays |
+| Function                        | Input                    | Output          |
+| ------------------------------- | ------------------------ | --------------- |
+| `induced_equilibrium`           | p, N, R, L, B, c         | int             |
+| `optimal_incentive_for_target`  | k_target, R, L, B, c     | float           |
+| `optimal_incentive`             | N, R, L, B, c            | float           |
+| `total_incentive_cost`          | p, N, R, L, B, c         | float           |
+| `platform_objective`            | p, N, R, L, B, c, budget | float           |
+| `find_optimal_incentive_search` | N, R, L, B, c, budget    | (p, k, welfare) |
+| `analyze_stackelberg`           | N, R, L, B, c, budget    | dict            |
+| `incentive_sensitivity`         | N, R, L, B, c_values     | dict of arrays  |
 
 ---
 
 ## 3.6 Simulation Module (`simulation.py`)
 
 ### Purpose
+
 Monte Carlo simulation engine for validation and extended analysis.
 
 ### Specification
@@ -1849,11 +1867,11 @@ class Simulation:
     """
     Single-run simulation of AoI in crowd-finding scenario.
     """
-    
+
     def __init__(self, config: SimConfig):
         """
         Initialize simulation.
-        
+
         Parameters
         ----------
         config : SimConfig
@@ -1862,26 +1880,26 @@ class Simulation:
         self.config = config
         self.rng = np.random.default_rng(config.simulation.seed)
         self.reset()
-    
+
     def reset(self, seed: Optional[int] = None):
         """Reset simulation state."""
         if seed is not None:
             self.rng = np.random.default_rng(seed)
-        
+
         self.t = 0
         self.aoi = 0
         self.trajectory = []
         self.detection_times = []
-    
+
     def step(self, k: int) -> Dict:
         """
         Execute one time slot.
-        
+
         Parameters
         ----------
         k : int
             Number of active volunteers this slot
-        
+
         Returns
         -------
         info : dict
@@ -1893,51 +1911,51 @@ class Simulation:
                 0, self.config.L, size=(k, 2)
             )
             target = self.rng.uniform(0, self.config.L, size=2)
-            
+
             # Check for detection
             distances = np.linalg.norm(positions - target, axis=1)
             detected = np.any(distances <= self.config.R)
         else:
             detected = False
-        
+
         # Update AoI
         if detected:
             self.aoi = 0
             self.detection_times.append(self.t)
         else:
             self.aoi += 1
-        
+
         self.trajectory.append(self.aoi)
         self.t += 1
-        
+
         return {
             't': self.t,
             'aoi': self.aoi,
             'detected': detected,
         }
-    
+
     def run(self, k: int, store_trajectory: bool = False) -> SimulationResult:
         """
         Run complete simulation.
-        
+
         Parameters
         ----------
         k : int
             Number of active volunteers (constant)
         store_trajectory : bool
             Whether to store full trajectory
-        
+
         Returns
         -------
         result : SimulationResult
         """
         self.reset()
-        
+
         for _ in range(self.config.simulation.T):
             self.step(k)
-        
+
         trajectory = np.array(self.trajectory)
-        
+
         return SimulationResult(
             mean_aoi=float(np.mean(trajectory)),
             peak_aoi=int(np.max(trajectory)),
@@ -1951,11 +1969,11 @@ class MonteCarloSimulation:
     """
     Monte Carlo simulation runner.
     """
-    
+
     def __init__(self, config: SimConfig):
         """
         Initialize Monte Carlo runner.
-        
+
         Parameters
         ----------
         config : SimConfig
@@ -1963,7 +1981,7 @@ class MonteCarloSimulation:
         """
         self.config = config
         self.base_seed = config.simulation.seed or 0
-    
+
     def run(
         self,
         k: int,
@@ -1973,7 +1991,7 @@ class MonteCarloSimulation:
     ) -> MonteCarloResult:
         """
         Run Monte Carlo simulation.
-        
+
         Parameters
         ----------
         k : int
@@ -1984,23 +2002,23 @@ class MonteCarloSimulation:
             Show progress bar
         store_individual : bool
             Store individual run results
-        
+
         Returns
         -------
         result : MonteCarloResult
         """
         if n_runs is None:
             n_runs = self.config.simulation.n_runs
-        
+
         mean_aois = []
         peak_aois = []
         detection_rates = []
         individual_results = [] if store_individual else None
-        
+
         iterator = range(n_runs)
         if show_progress:
             iterator = tqdm(iterator, desc=f"MC simulation (k={k})")
-        
+
         for i in iterator:
             # Create simulation with unique seed
             run_config = SimConfig(
@@ -2012,17 +2030,17 @@ class MonteCarloSimulation:
                     seed=self.base_seed + i,
                 )
             )
-            
+
             sim = Simulation(run_config)
             result = sim.run(k, store_trajectory=store_individual)
-            
+
             mean_aois.append(result.mean_aoi)
             peak_aois.append(result.peak_aoi)
             detection_rates.append(result.detection_rate)
-            
+
             if store_individual:
                 individual_results.append(result)
-        
+
         return MonteCarloResult(
             mean_aoi=float(np.mean(mean_aois)),
             mean_aoi_std=float(np.std(mean_aois)),
@@ -2041,7 +2059,7 @@ def run_parameter_sweep(
 ) -> Dict[str, NDArray]:
     """
     Run simulations across range of k values.
-    
+
     Parameters
     ----------
     base_config : SimConfig
@@ -2052,7 +2070,7 @@ def run_parameter_sweep(
         Runs per k value
     show_progress : bool
         Show progress
-    
+
     Returns
     -------
     results : dict
@@ -2066,20 +2084,20 @@ def run_parameter_sweep(
         'mean_peak_aoi': np.zeros(n),
         'detection_rate': np.zeros(n),
     }
-    
+
     mc = MonteCarloSimulation(base_config)
-    
+
     for i, k in enumerate(k_values):
         if show_progress:
             print(f"Running k={k} ({i+1}/{n})")
-        
+
         mc_result = mc.run(k, n_runs=n_runs, show_progress=False)
-        
+
         results['mean_aoi'][i] = mc_result.mean_aoi
         results['mean_aoi_std'][i] = mc_result.mean_aoi_std
         results['mean_peak_aoi'][i] = mc_result.mean_peak_aoi
         results['detection_rate'][i] = mc_result.mean_detection_rate
-    
+
     return results
 
 
@@ -2091,7 +2109,7 @@ def validate_analytical(
 ) -> Dict:
     """
     Validate analytical formulas against simulation.
-    
+
     Parameters
     ----------
     config : SimConfig
@@ -2102,7 +2120,7 @@ def validate_analytical(
         Runs per k value
     tolerance : float
         Relative tolerance for validation
-    
+
     Returns
     -------
     validation : dict
@@ -2110,9 +2128,9 @@ def validate_analytical(
     """
     from .aoi import expected_aoi_from_k
     from .spatial import analytical_coverage_prob
-    
+
     results = run_parameter_sweep(config, k_values, n_runs, show_progress=True)
-    
+
     validation = {
         'k': np.array(k_values),
         'analytical_aoi': np.zeros(len(k_values)),
@@ -2121,32 +2139,32 @@ def validate_analytical(
         'relative_error': np.zeros(len(k_values)),
         'passed': np.zeros(len(k_values), dtype=bool),
     }
-    
+
     for i, k in enumerate(k_values):
         analytical = expected_aoi_from_k(k, config.R, config.L)
         validation['analytical_aoi'][i] = analytical
-        
+
         if analytical > 0:
             error = abs(results['mean_aoi'][i] - analytical) / analytical
         else:
             error = abs(results['mean_aoi'][i])
-        
+
         validation['relative_error'][i] = error
         validation['passed'][i] = error < tolerance
-    
+
     validation['all_passed'] = np.all(validation['passed'])
-    
+
     return validation
 ```
 
 ### Interface Summary
 
-| Class/Function | Purpose |
-|----------------|---------|
-| `Simulation` | Single simulation run |
-| `MonteCarloSimulation` | Multiple run aggregation |
-| `run_parameter_sweep` | Sweep over k values |
-| `validate_analytical` | Compare simulation to theory |
+| Class/Function         | Purpose                      |
+| ---------------------- | ---------------------------- |
+| `Simulation`           | Single simulation run        |
+| `MonteCarloSimulation` | Multiple run aggregation     |
+| `run_parameter_sweep`  | Sweep over k values          |
+| `validate_analytical`  | Compare simulation to theory |
 
 ---
 
@@ -2194,11 +2212,11 @@ def apply_style():
 def save_figure(fig: Figure, name: str, output_dir: str = 'results/figures'):
     """Save figure in multiple formats."""
     os.makedirs(output_dir, exist_ok=True)
-    
+
     for fmt in ['pdf', 'png']:
         path = os.path.join(output_dir, f"{name}.{fmt}")
         fig.savefig(path, format=fmt, bbox_inches='tight', dpi=300)
-    
+
     print(f"Saved: {name}")
 
 
@@ -2211,7 +2229,7 @@ def plot_equilibrium_vs_cost(
 ) -> Tuple[Figure, Axes]:
     """
     Plot equilibrium participation vs cost.
-    
+
     Parameters
     ----------
     c_values : array
@@ -2224,26 +2242,26 @@ def plot_equilibrium_vs_cost(
         Parameter info for title
     save : bool
         Whether to save figure
-    
+
     Returns
     -------
     fig, ax : Figure and Axes
     """
     apply_style()
-    
+
     fig, ax = plt.subplots()
-    
+
     ax.plot(c_values, k_ne, 'b-o', label='Nash Equilibrium $k^*$')
     ax.plot(c_values, k_opt, 'r--s', label='Social Optimum $k^{opt}$')
-    
+
     ax.set_xlabel('Cost $c$')
     ax.set_ylabel('Active Volunteers $k$')
     ax.legend()
     ax.set_title(f"N={params['N']}, R/L={params['R']/params['L']:.2f}")
-    
+
     if save:
         save_figure(fig, 'equilibrium_vs_cost')
-    
+
     return fig, ax
 
 
@@ -2257,7 +2275,7 @@ def plot_aoi_vs_k(
 ) -> Tuple[Figure, Axes]:
     """
     Plot AoI vs number of active volunteers.
-    
+
     Parameters
     ----------
     k_values : array
@@ -2272,32 +2290,32 @@ def plot_aoi_vs_k(
         Parameter info
     save : bool
         Whether to save
-    
+
     Returns
     -------
     fig, ax : Figure and Axes
     """
     apply_style()
-    
+
     fig, ax = plt.subplots()
-    
+
     ax.plot(k_values, aoi_analytical, 'b-', label='Analytical', linewidth=2)
-    
+
     if aoi_simulated is not None:
         if aoi_std is not None:
             ax.errorbar(k_values, aoi_simulated, yerr=aoi_std,
                        fmt='ro', label='Simulated', capsize=3, markersize=4)
         else:
             ax.plot(k_values, aoi_simulated, 'ro', label='Simulated')
-    
+
     ax.set_xlabel('Active Volunteers $k$')
     ax.set_ylabel('Expected AoI $\\bar{\\Delta}$')
     ax.legend()
     ax.set_yscale('log')
-    
+
     if save:
         save_figure(fig, 'aoi_vs_k')
-    
+
     return fig, ax
 
 
@@ -2310,7 +2328,7 @@ def plot_poa_heatmap(
 ) -> Tuple[Figure, Axes]:
     """
     Plot Price of Anarchy heatmap.
-    
+
     Parameters
     ----------
     N_values : array
@@ -2323,29 +2341,29 @@ def plot_poa_heatmap(
         Parameter info
     save : bool
         Whether to save
-    
+
     Returns
     -------
     fig, ax : Figure and Axes
     """
     apply_style()
-    
+
     fig, ax = plt.subplots(figsize=(4, 3))
-    
+
     im = ax.imshow(poa_matrix, aspect='auto', origin='lower',
                    extent=[c_values[0], c_values[-1], N_values[0], N_values[-1]],
                    cmap='YlOrRd')
-    
+
     cbar = fig.colorbar(im, ax=ax)
     cbar.set_label('Price of Anarchy')
-    
+
     ax.set_xlabel('Cost $c$')
     ax.set_ylabel('Population $N$')
     ax.set_title('Price of Anarchy')
-    
+
     if save:
         save_figure(fig, 'poa_heatmap')
-    
+
     return fig, ax
 
 
@@ -2358,7 +2376,7 @@ def plot_stackelberg_incentive(
 ) -> Tuple[Figure, Axes]:
     """
     Plot optimal Stackelberg incentive vs cost.
-    
+
     Parameters
     ----------
     c_values : array
@@ -2371,15 +2389,15 @@ def plot_stackelberg_incentive(
         Parameter info
     save : bool
         Whether to save
-    
+
     Returns
     -------
     fig, ax : Figure and Axes
     """
     apply_style()
-    
+
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7, 2.5))
-    
+
     # Per-volunteer incentive
     ax1.plot(c_values, p_star, 'b-o')
     ax1.plot(c_values, c_values, 'k--', alpha=0.5, label='$p = c$')
@@ -2387,18 +2405,18 @@ def plot_stackelberg_incentive(
     ax1.set_ylabel('Optimal Incentive $p^*$')
     ax1.legend()
     ax1.set_title('Per-Volunteer Incentive')
-    
+
     # Total incentive
     ax2.plot(c_values, total_incentive, 'r-s')
     ax2.set_xlabel('Cost $c$')
     ax2.set_ylabel('Total Payment $p^* \\cdot k^{opt}$')
     ax2.set_title('Platform Total Cost')
-    
+
     plt.tight_layout()
-    
+
     if save:
         save_figure(fig, 'stackelberg_incentive')
-    
+
     return fig, (ax1, ax2)
 
 
@@ -2412,7 +2430,7 @@ def plot_welfare_comparison(
 ) -> Tuple[Figure, Axes]:
     """
     Compare welfare under different mechanisms.
-    
+
     Parameters
     ----------
     c_values : array
@@ -2427,27 +2445,27 @@ def plot_welfare_comparison(
         Parameter info
     save : bool
         Whether to save
-    
+
     Returns
     -------
     fig, ax : Figure and Axes
     """
     apply_style()
-    
+
     fig, ax = plt.subplots()
-    
+
     ax.plot(c_values, W_ne, 'b-o', label='Nash Equilibrium')
     ax.plot(c_values, W_opt, 'g--', label='Social Optimum', linewidth=2)
     ax.plot(c_values, W_stack, 'r-s', label='Stackelberg')
-    
+
     ax.set_xlabel('Cost $c$')
     ax.set_ylabel('Social Welfare $W$')
     ax.legend()
     ax.set_title('Welfare Comparison')
-    
+
     if save:
         save_figure(fig, 'welfare_comparison')
-    
+
     return fig, ax
 
 
@@ -2461,7 +2479,7 @@ def plot_spatial_snapshot(
 ) -> Tuple[Figure, Axes]:
     """
     Visualize spatial configuration.
-    
+
     Parameters
     ----------
     positions : array (N, 2)
@@ -2476,31 +2494,31 @@ def plot_spatial_snapshot(
         Which volunteers are active
     save : bool
         Whether to save
-    
+
     Returns
     -------
     fig, ax : Figure and Axes
     """
     apply_style()
-    
+
     fig, ax = plt.subplots(figsize=(4, 4))
-    
+
     # Target and detection zone
-    circle = plt.Circle(target, R, fill=False, color='red', 
+    circle = plt.Circle(target, R, fill=False, color='red',
                         linestyle='--', linewidth=2, label='Detection Zone')
     ax.add_patch(circle)
     ax.plot(target[0], target[1], 'r*', markersize=15, label='Target')
-    
+
     # Volunteers
     if active_mask is None:
-        ax.scatter(positions[:, 0], positions[:, 1], 
+        ax.scatter(positions[:, 0], positions[:, 1],
                   c='blue', s=20, alpha=0.6, label='Volunteers')
     else:
         ax.scatter(positions[~active_mask, 0], positions[~active_mask, 1],
                   c='gray', s=15, alpha=0.4, label='Inactive')
         ax.scatter(positions[active_mask, 0], positions[active_mask, 1],
                   c='blue', s=25, alpha=0.8, label='Active')
-    
+
     ax.set_xlim(0, L)
     ax.set_ylim(0, L)
     ax.set_xlabel('$x$')
@@ -2508,10 +2526,10 @@ def plot_spatial_snapshot(
     ax.legend(loc='upper right')
     ax.set_aspect('equal')
     ax.set_title('Spatial Configuration')
-    
+
     if save:
         save_figure(fig, 'spatial_snapshot')
-    
+
     return fig, ax
 ```
 
@@ -2521,15 +2539,15 @@ def plot_spatial_snapshot(
 
 ## 4.1 Day-by-Day Schedule
 
-| Day | Tasks | Deliverables |
-|-----|-------|--------------|
+| Day   | Tasks                                        | Deliverables                |
+| ----- | -------------------------------------------- | --------------------------- |
 | **1** | Setup environment, `config.py`, `spatial.py` | Working geometry tests pass |
-| **2** | `aoi.py`, tests | AoI computation validated |
-| **3** | `game.py`, tests | NE solver verified |
-| **4** | `simulation.py` | Monte Carlo engine working |
-| **5** | `stackelberg.py`, `visualization.py` | Complete module set |
-| **6** | Experiments 1-3 | Core results |
-| **7** | Experiment 4-5, polish | All figures ready |
+| **2** | `aoi.py`, tests                              | AoI computation validated   |
+| **3** | `game.py`, tests                             | NE solver verified          |
+| **4** | `simulation.py`                              | Monte Carlo engine working  |
+| **5** | `stackelberg.py`, `visualization.py`         | Complete module set         |
+| **6** | Experiments 1-3                              | Core results                |
+| **7** | Experiment 4-5, polish                       | All figures ready           |
 
 ## 4.2 Implementation Order
 
@@ -2576,11 +2594,11 @@ git merge feature/spatial
 
 ## 5.1 Test Categories
 
-| Category | Purpose | Location |
-|----------|---------|----------|
-| Unit | Individual functions | `tests/test_*.py` |
-| Integration | Module interactions | `tests/test_integration.py` |
-| Validation | Theory vs simulation | `experiments/validate.py` |
+| Category    | Purpose              | Location                    |
+| ----------- | -------------------- | --------------------------- |
+| Unit        | Individual functions | `tests/test_*.py`           |
+| Integration | Module interactions  | `tests/test_integration.py` |
+| Validation  | Theory vs simulation | `experiments/validate.py`   |
 
 ## 5.2 Test Commands
 
@@ -2613,6 +2631,7 @@ pytest tests/test_game.py::TestNashEquilibrium::test_formula_matches_search -v
 **Objective:** Characterize NE and social optimum as functions of parameters.
 
 **Parameters:**
+
 ```python
 N_values = [50, 100, 200, 500]
 c_values = np.linspace(0.1, 10.0, 50)
@@ -2622,6 +2641,7 @@ L = 100.0
 ```
 
 **Outputs:**
+
 - `k_star` vs `c` curves for different N
 - `k_opt` vs `c` curves
 - Participation gap analysis
@@ -2631,6 +2651,7 @@ L = 100.0
 **Objective:** Quantify inefficiency of selfish behavior.
 
 **Analysis:**
+
 - PoA vs c for fixed N
 - PoA vs N for fixed c
 - PoA heatmap over (N, c) grid
@@ -2640,7 +2661,8 @@ L = 100.0
 **Objective:** Design optimal platform incentive.
 
 **Analysis:**
-- Optimal p* vs c
+
+- Optimal p\* vs c
 - Total incentive cost vs c
 - Welfare improvement from incentives
 
@@ -2649,6 +2671,7 @@ L = 100.0
 **Objective:** Verify analytical results.
 
 **Method:**
+
 - Compare analytical AoI to simulated
 - Statistical tests for agreement
 - Confidence intervals
@@ -2658,6 +2681,7 @@ L = 100.0
 **Objective:** Understand parameter importance.
 
 **Parameters varied:**
+
 - R/L ratio (coverage density)
 - B/c ratio (benefit-to-cost)
 - N (population size)
@@ -2675,12 +2699,12 @@ L = 100.0
 
 ## 7.2 Validation Criteria
 
-| Metric | Criterion |
-|--------|-----------|
-| AoI relative error | < 5% |
-| NE formula vs search | Exact match |
+| Metric                           | Criterion   |
+| -------------------------------- | ----------- |
+| AoI relative error               | < 5%        |
+| NE formula vs search             | Exact match |
 | Social optimum formula vs search | Exact match |
-| PoA | ≥ 1 always |
+| PoA                              | ≥ 1 always  |
 
 ## 7.3 Output Files
 
@@ -2706,15 +2730,15 @@ results/
 
 ## 8.1 Figure Specifications
 
-| Property | Value |
-|----------|-------|
-| Width (single column) | 3.5 inches |
-| Width (double column) | 7.0 inches |
-| Font | Serif (Times-like) |
-| Font size | 10pt (labels), 8pt (ticks) |
-| Line width | 1.5pt |
-| Marker size | 4pt |
-| Format | PDF (vector) + PNG (preview) |
+| Property              | Value                        |
+| --------------------- | ---------------------------- |
+| Width (single column) | 3.5 inches                   |
+| Width (double column) | 7.0 inches                   |
+| Font                  | Serif (Times-like)           |
+| Font size             | 10pt (labels), 8pt (ticks)   |
+| Line width            | 1.5pt                        |
+| Marker size           | 4pt                          |
+| Format                | PDF (vector) + PNG (preview) |
 
 ## 8.2 Color Scheme
 
@@ -2730,10 +2754,10 @@ COLORS = {
 
 ## 8.3 Required Figures
 
-1. **equilibrium_vs_cost.pdf**: k* and k^opt vs c
+1. **equilibrium_vs_cost.pdf**: k\* and k^opt vs c
 2. **aoi_vs_k.pdf**: AoI vs k with analytical and simulated
 3. **poa_heatmap.pdf**: PoA over parameter space
-4. **stackelberg_incentive.pdf**: p* and total cost vs c
+4. **stackelberg_incentive.pdf**: p\* and total cost vs c
 5. **welfare_comparison.pdf**: W under different mechanisms
 6. **spatial_snapshot.pdf**: Example spatial configuration
 
@@ -2782,6 +2806,224 @@ COLORS = {
 
 ---
 
+# 10. Interactive Demo (React)
+
+## 10.1 Overview
+
+The interactive demo provides a visual exploration of the under-participation phenomenon. It is designed for **educational and demonstration purposes**, not for validating the theoretical formulas.
+
+## 10.2 Features
+
+| Feature                  | Description                                                          |
+| ------------------------ | -------------------------------------------------------------------- |
+| **Shared Seed**          | Nash and Optimal simulations start with identical initial conditions |
+| **View Modes**           | Nash only, Comparison (side-by-side), Optimal only                   |
+| **Batch Runs**           | 10-200 runs with aggregated statistics                               |
+| **Monte Carlo Coverage** | Real-time coverage estimation using 800 sample points                |
+| **P_det Curve**          | Interactive chart showing theoretical detection probability          |
+| **AoI History**          | Comparative time series visualization                                |
+| **Presets**              | Easy, Medium, Hard, Critical scenarios                               |
+
+## 10.3 Architecture
+
+```
+emergency_visualization.jsx
+├── Constants & Game Theory
+│   ├── FIXED_PARAMS (R, B, responseTime, aoiThreshold, maxTime)
+│   ├── PRESETS (easy, medium, hard, critical)
+│   ├── computeRho(), computeNashK(), computeOptimalK(), computePdet()
+│   └── createRNG() - Mulberry32 seeded random generator
+│
+├── Simulation Engine
+│   ├── SimulationEngine class
+│   │   ├── initialize() - Setup volunteers and target
+│   │   ├── step() - Single simulation step
+│   │   ├── runToCompletion() - For batch runs
+│   │   └── getState() - Current state snapshot
+│   │
+│   ├── createSimulationPair() - Shared seed initialization
+│   └── estimateCoverage() - Monte Carlo coverage estimation
+│
+├── Main Component (EmergencySimulation)
+│   ├── State management (parameters, simulation, batch)
+│   ├── Animation loop
+│   ├── Canvas rendering
+│   └── Event handlers
+│
+└── Sub-components
+    ├── Section, ParamSlider, StatRow
+    ├── SimPanel (canvas + progress bar)
+    └── MetricCard (comparative stats)
+```
+
+## 10.4 Key Implementation Details
+
+### Shared Seed (Fair Comparison)
+
+Both Nash and Optimal simulations use the same random seed, ensuring:
+
+- Identical initial volunteer positions
+- Identical initial target position
+- Same shuffle order for volunteer activation
+
+The only difference is **how many volunteers are active**:
+
+- Nash: first k\* volunteers (by shuffled order)
+- Optimal: first k_opt volunteers (includes all k\* from Nash)
+
+```javascript
+const createSimulationPair = (N, L, kNash, kOpt, seed) => {
+  const rng = createRNG(seed);
+
+  // Generate shared positions
+  const baseVolunteers = [];
+  for (let i = 0; i < N; i++) {
+    baseVolunteers.push({
+      x: rng() * L,
+      y: rng() * L,
+      waypointX: rng() * L,
+      waypointY: rng() * L,
+    });
+  }
+
+  // Deterministic shuffle
+  const indices = [...Array(N).keys()];
+  for (let i = N - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+
+  // Nash: activate indices[0..kNash-1]
+  // Optimal: activate indices[0..kOpt-1]
+  // ...
+};
+```
+
+### Rescue Logic
+
+Matches the Python dynamic simulation:
+
+1. **Detection**: When a volunteer is within R of the target
+2. **Rescue Start**: On first detection, rescue timer begins
+3. **Rescue Abort**: If AoI exceeds threshold during rescue, timer resets
+4. **Rescue Success**: If rescue timer reaches responseTime with sustained detection
+
+```javascript
+if (this.rescueStarted) {
+  if (this.aoi > aoiThreshold) {
+    // Lost contact - abort rescue
+    this.rescueStarted = false;
+    this.rescueProgress = 0;
+  } else if (this.time - this.rescueStartTime >= responseTime) {
+    // Sustained contact - success!
+    this.outcome = "rescued";
+  }
+}
+```
+
+### Monte Carlo Coverage
+
+Estimates the fraction of the area covered by active volunteers:
+
+```javascript
+const estimateCoverage = (volunteers, L, R, samples = 800) => {
+  const activeVols = volunteers.filter((v) => v.active);
+  let covered = 0;
+
+  for (let i = 0; i < samples; i++) {
+    const px = Math.random() * L;
+    const py = Math.random() * L;
+    for (const v of activeVols) {
+      if (distance(px, py, v.x, v.y) <= R) {
+        covered++;
+        break;
+      }
+    }
+  }
+  return covered / samples;
+};
+```
+
+## 10.5 Parameters
+
+### Fixed Parameters
+
+| Parameter      | Value | Description                     |
+| -------------- | ----- | ------------------------------- |
+| R              | 30    | Detection radius                |
+| B              | 10    | Benefit scaling factor          |
+| volunteerSpeed | 1.2   | Movement speed per step         |
+| targetSpeed    | 0.4   | Target random walk speed        |
+| responseTime   | 50    | Steps needed to complete rescue |
+| aoiThreshold   | 25    | Max AoI allowed during rescue   |
+| maxTime        | 400   | Simulation timeout              |
+
+### User-Configurable Parameters
+
+| Parameter         | Range             | Default |
+| ----------------- | ----------------- | ------- |
+| Cost ratio (c/Bρ) | 0.1 - 0.95        | 0.5     |
+| Area size (L)     | 300 - 800         | 500     |
+| Volunteers (N)    | 50, 100, 150, 200 | 100     |
+| Playback speed    | 1x, 2x, 4x, 8x    | 1x      |
+| Batch size        | 10 - 200          | 50      |
+
+### Presets
+
+| Preset   | c/Bρ | N   | L   | Behavior                                   |
+| -------- | ---- | --- | --- | ------------------------------------------ |
+| Easy     | 0.25 | 100 | 400 | Small gap, both usually succeed            |
+| Medium   | 0.50 | 100 | 500 | Moderate gap visible                       |
+| Hard     | 0.70 | 100 | 600 | Large gap, Nash struggles                  |
+| Critical | 0.88 | 100 | 700 | Nash often fails, Optimal usually succeeds |
+
+## 10.6 Setup Instructions
+
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+
+### Installation
+
+```bash
+cd demos/emergency/ui
+npm install
+npm install recharts  # Required for charts
+```
+
+### Running
+
+```bash
+npm run dev
+```
+
+Open http://localhost:5173 in browser.
+
+### Usage
+
+1. **Select a preset** or adjust parameters manually
+2. **Click Start** to run a single simulation
+3. **Use Batch Run** to collect statistics over multiple runs
+4. **Compare outcomes**: Nash (red) vs Optimal (green)
+
+## 10.7 Validation Notes
+
+The UI is for **demonstration only**. It does NOT validate the theoretical P_det formula because:
+
+1. Volunteer positions are **correlated** across time (movement)
+2. The Monte Carlo coverage is an **estimate**, not exact
+3. Rescue logic adds complexity beyond simple detection
+
+For theoretical validation, use the Python `validate_P_det_static()` function which uses i.i.d. positions at each step.
+
+See `VALIDATION_VS_DEMONSTRATION.md` for detailed methodology.
+
+````
+
+
+---
+
 # Appendix: Quick Reference
 
 ## Key Formulas
@@ -2810,9 +3052,6 @@ python experiments/run_all.py
 
 # Generate figures only
 python -c "from experiments.run_all import generate_figures; generate_figures()"
-```
+````
 
 ---
-
-*Document Version: 1.0*
-*Last Updated: December 2024*
