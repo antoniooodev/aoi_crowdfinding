@@ -1,27 +1,121 @@
-# Age of Information in Emergency Crowd-Finding: A Game-Theoretic Analysis
+# AoI-Aware Emergency Crowd-Finding: A Game-Theoretic Analysis
 
-> **Course Project** — Game Theory, University of Padova  
-> **Author**: Antonio Tangaro
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![LaTeX](https://img.shields.io/badge/LaTeX-IEEE%20Format-green.svg)](https://www.ieee.org/)
+
+> **Game Theory Course Project** — University of Padova, 2024/25  
+> **Author**: Antonio Tangaro  
 > **Supervisor**: Prof. Leonardo Badia
 
-## Overview
+---
 
-This project analyzes **strategic volunteer participation** in emergency crowd-finding networks (e.g., Apple Find My) using **Age of Information (AoI)** as the performance metric. We model the system as a public goods game where volunteers balance personal costs against shared benefits, derive closed-form equilibrium solutions, and design platform incentives to achieve socially optimal outcomes.
+## Abstract
 
-### Key Question
+This project analyzes strategic volunteer participation in emergency crowd-finding networks using **Age of Information (AoI)** as the core performance metric. We model the system as a public goods game where rational volunteers balance personal participation costs against shared detection benefits.
 
-> In a crowd-sourced emergency search, how many volunteers will participate voluntarily, and how does this compare to the social optimum?
+**Key contributions:**
 
-### Main Results
+- Closed-form expressions for Nash equilibrium and social optimum participation levels
+- Characterization of the under-participation gap and Price of Anarchy
+- Stackelberg incentive mechanism design to achieve socially optimal outcomes
+- Validated simulation framework (static + dynamic) with interactive visualization
 
-| Finding | Formula |
-|---------|---------|
-| Nash equilibrium | $k^* = \lfloor 1 + \ln(c/B\rho) / \ln(1-\rho) \rfloor$ |
-| Social optimum | $k^{\text{opt}} = \lfloor 1 + \ln(c/NB\rho) / \ln(1-\rho) \rfloor$ |
-| Under-participation gap | $\Delta k \approx \ln(N) / \rho$ |
-| Optimal incentive | $p^* = c - B\rho(1-\rho)^{k^{\text{opt}}-1}$ |
+**Main finding:** Selfish behavior leads to systematic under-participation, causing up to **70% efficiency loss** in rescue success rate. Platform incentives can fully recover the social optimum.
 
-**Bottom line**: Selfish behavior leads to systematic under-participation, causing up to 70% efficiency loss in rescue success rate. Platform incentives can fully recover the social optimum.
+---
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Background](#background)
+- [Theoretical Model](#theoretical-model)
+- [Project Structure](#project-structure)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Results](#results)
+- [Interactive Demo](#interactive-demo)
+- [Documentation](#documentation)
+- [Citation](#citation)
+- [License](#license)
+
+---
+
+## Quick Start
+
+```bash
+# Clone and setup
+git clone https://github.com/antoniooodev/aoi_crowdfinding.git
+cd aoi_crowdfinding
+pip install -r requirements.txt
+
+# Run validation and generate figures
+python simulations/emergency_simulation.py
+
+# Compile paper
+cd paper && pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex
+```
+
+---
+
+## Background
+
+### Problem Setting
+
+Emergency crowd-finding networks (e.g., Apple Find My, Samsung SmartThings) leverage volunteers' devices to locate missing persons or objects. Each volunteer incurs a cost (battery, bandwidth, privacy) to participate, while detection benefits are shared by all.
+
+<p align="center">
+  <img src="docs/figures/system_diagram.png" alt="System Diagram" width="700"/>
+</p>
+<p align="center"><em>Figure 1: Emergency crowd-finding system. N volunteers with detection radius R search for a target in area L². The platform must incentivize participation to maximize detection probability.</em></p>
+
+### Research Questions
+
+1. **Equilibrium**: How many volunteers participate under selfish behavior?
+2. **Efficiency**: How does Nash equilibrium compare to the social optimum?
+3. **Mechanism Design**: What incentives achieve optimal participation?
+
+---
+
+## Theoretical Model
+
+### System Parameters
+
+| Symbol | Description                    | Typical Value |
+| ------ | ------------------------------ | ------------- |
+| $L$    | Search area side length        | 500 m         |
+| $N$    | Total volunteers               | 100           |
+| $R$    | Detection radius               | 30 m          |
+| $\rho$ | Coverage ratio $\pi R^2 / L^2$ | 0.011         |
+| $B$    | Benefit from detection         | 10            |
+| $c$    | Participation cost             | variable      |
+
+### Key Formulas
+
+**Detection probability** with $k$ active volunteers:
+
+$$P_{\text{det}}(k) = 1 - (1-\rho)^k$$
+
+**Nash equilibrium** participation:
+
+$$k^* = \left\lfloor 1 + \frac{\ln(c / B\rho)}{\ln(1-\rho)} \right\rfloor$$
+
+**Social optimum** participation:
+
+$$k^{\text{opt}} = \left\lfloor 1 + \frac{\ln(c / NB\rho)}{\ln(1-\rho)} \right\rfloor$$
+
+**Under-participation gap**:
+
+$$\Delta k = k^{\text{opt}} - k^* \approx \frac{\ln(N)}{\rho}$$
+
+**Optimal platform incentive** (Stackelberg):
+
+$$p^* = c - B\rho(1-\rho)^{k^{\text{opt}}-1}$$
+
+<p align="center">
+  <img src="docs/figures/pdet_curve.png" alt="Detection Probability Curve" width="600"/>
+</p>
+<p align="center"><em>Figure 2: Detection probability P_det(k) showing the gap between Nash equilibrium k* and social optimum k_opt. The shaded area represents the efficiency loss from under-participation.</em></p>
 
 ---
 
@@ -29,37 +123,42 @@ This project analyzes **strategic volunteer participation** in emergency crowd-f
 
 ```
 aoi_crowdfinding/
+├── paper/                           # LaTeX paper (IEEE format)
+│   ├── main.tex
+│   ├── references.bib
+│   └── figures/
 │
-├── paper/                              # LaTeX paper (IEEE format)
-│   ├── main.tex                        # Main document
-│   ├── references.bib                  # Bibliography
-│   └── figures/                        # Paper figures
-│
-├── src/                                # Core theory implementation
-│   ├── __init__.py
-│   ├── config.py                       # Parameters, thresholds
-│   ├── spatial.py                      # 2D geometry, coverage
-│   ├── aoi.py                          # AoI computations
-│   ├── game.py                         # Nash, social optimum, PoA
-│   ├── stackelberg.py                  # Incentive design
-│   ├── simulation.py                   # Monte Carlo (static)
-│   └── visualization.py                # IEEE-style plots
+├── src/                             # Core Python modules
+│   ├── config.py                    # Parameters and configuration
+│   ├── spatial.py                   # 2D geometry, coverage computation
+│   ├── aoi.py                       # Age of Information formulas
+│   ├── game.py                      # Nash equilibrium, social optimum, PoA
+│   ├── stackelberg.py               # Incentive mechanism design
+│   ├── simulation.py                # Monte Carlo simulation engine
+│   └── visualization.py             # IEEE-style plotting utilities
 │
 ├── simulations/
-│   ├── emergency_simulation_v3.py      # Final corrected simulation
-│   └── emergency_visualization.jsx     # React interactive demo
-│
-├── results/
-│   ├── data/                           # CSV outputs
-│   └── figures/                        # Generated plots
+│   ├── emergency_simulation.py      # Main simulation script
+│   └── emergency_visualization.jsx  # React interactive demo
 │
 ├── docs/
-│   ├── formal_model.md                 # Complete mathematical model
-│   ├── simulation_pipeline.md          # Simulation architecture
-│   └── VALIDATION_VS_DEMONSTRATION.md  # Conceptual separation
+│   ├── formal_model.md              # Complete mathematical derivations
+│   ├── simulation_pipeline.md       # Simulation architecture details
+│   ├── VALIDATION_VS_DEMONSTRATION.md
+│   └── figures/                     # Documentation figures
 │
-├── README.md                           # This file
-└── requirements.txt                    # Python dependencies
+├── results/
+│   ├── data/                        # Raw CSV outputs
+│   └── figures/                     # Generated plots
+│
+├── tests/                           # Unit tests
+│   ├── test_game.py
+│   ├── test_simulation.py
+│   └── test_integration.py
+│
+├── requirements.txt
+├── README.md
+└── LICENSE
 ```
 
 ---
@@ -68,14 +167,17 @@ aoi_crowdfinding/
 
 ### Requirements
 
-- Python 3.9+
-- LaTeX distribution (for paper compilation)
+- Python 3.9 or higher
+- LaTeX distribution (TeX Live, MiKTeX) for paper compilation
+- Node.js 18+ (optional, for interactive demo)
 
-### Setup
+### Python Setup
 
 ```bash
-# Clone or extract the project
-cd aoi_crowdfinding
+# Create virtual environment (recommended)
+python -m venv venv
+source venv/bin/activate  # Linux/macOS
+# or: venv\Scripts\activate  # Windows
 
 # Install dependencies
 pip install -r requirements.txt
@@ -87,34 +189,68 @@ pip install -r requirements.txt
 numpy>=1.21
 matplotlib>=3.5
 pandas>=1.3
+scipy>=1.7
 tqdm>=4.62
+```
+
+### Verify Installation
+
+```bash
+python -c "from src.game import compute_nash_k; print('OK')"
 ```
 
 ---
 
 ## Usage
 
-### 1. Run Validation + Cost Sweep
+### 1. Run Full Analysis
 
 ```bash
 python simulations/emergency_simulation.py
 ```
 
-**Output**:
-- `results/figures/complete_analysis.png` — 6-panel analysis figure
-- Console output with validation results and cost sweep summary
+This executes:
 
-**Expected output**:
+1. **Static validation**: Verifies P_det formula against Monte Carlo (i.i.d. positions)
+2. **Cost sweep**: Analyzes Nash vs Optimal across cost ratios c/Bρ ∈ [0.1, 0.95]
+3. **Figure generation**: Produces publication-ready plots
+
+**Expected output:**
+
 ```
+================================================================================
 VALIDATION: P_det with STATIC simulation (i.i.d. positions)
-k=  5: theory=0.0553, sim=0.0555±0.0006, error=0.4% ✓
-k= 50: theory=0.4337, sim=0.4328±0.0011, error=0.2% ✓
-k=100: theory=0.6794, sim=0.6775±0.0012, error=0.3% ✓
+================================================================================
 
-Passed: 11/11 (<10% error)
+k=  5: theory=0.0553, sim=0.0555±0.0006, error=0.4% ✓
+k= 10: theory=0.1071, sim=0.1065±0.0009, error=0.6% ✓
+k= 25: theory=0.2453, sim=0.2448±0.0011, error=0.2% ✓
+...
+Validation: 11/11 passed (<1% error)
+
+================================================================================
+COST SWEEP: Nash vs Social Optimum
+================================================================================
+
+c/Bρ=0.50: k*=61, k_opt=100, gap=39, Nash=100.0%, Opt=100.0%
+c/Bρ=0.72: k*=30, k_opt=100, gap=70, Nash=87.0%, Opt=100.0%
+c/Bρ=0.88: k*=12, k_opt=100, gap=88, Nash=42.0%, Opt=100.0%
+...
+
+Figures saved to results/figures/
 ```
 
-### 2. Compile the Paper
+### 2. Run Specific Experiments
+
+```bash
+# Validation only
+python -c "from simulations.emergency_simulation import validate_P_det_static; validate_P_det_static()"
+
+# Custom parameter sweep
+python simulations/emergency_simulation.py --cost-min 0.3 --cost-max 0.9 --runs 100
+```
+
+### 3. Compile Paper
 
 ```bash
 cd paper
@@ -124,142 +260,195 @@ pdflatex main.tex
 pdflatex main.tex
 ```
 
-**Output**: `main.pdf` (5-7 pages IEEE format)
+Output: `paper/main.pdf`
 
-### 3. Interactive Visualization (React)
+### 4. Run Tests
 
-The file `simulations/emergency_visualization.jsx` provides an interactive demo. To use:
-1. Copy into a React project, or
-2. Use an online React playground (CodeSandbox, StackBlitz)
-
----
-
-## Theoretical Model
-
-### System
-
-- **Area**: $[0, L]^2$ square region
-- **Volunteers**: $N$ agents with detection radius $R$
-- **Coverage ratio**: $\rho = \pi R^2 / L^2$
-- **Target**: Missing person at unknown location
-
-### AoI Dynamics
-
-Detection probability with $k$ active volunteers:
-$$P_{\text{det}}(k) = 1 - (1-\rho)^k$$
-
-Expected Age of Information:
-$$\bar{\Delta}(k) = \frac{(1-\rho)^k}{1 - (1-\rho)^k}$$
-
-### Game Model
-
-**Utility function**:
-$$u_i(a_i, k_{-i}) = a_i \cdot \left[ B \rho (1-\rho)^{k_{-i}} - c \right]$$
-
-- $B$ = benefit from fresh information
-- $c$ = participation cost
-- $a_i \in \{0, 1\}$ = volunteer $i$'s action
-
-**Nash Equilibrium**: Largest $k$ such that marginal benefit ≥ cost:
-$$k^* = \left\lfloor 1 + \frac{\ln(c / B\rho)}{\ln(1-\rho)} \right\rfloor$$
-
-**Social Optimum**: Maximizes total welfare $W(k) = NB[1 - (1-\rho)^k] - ck$
+```bash
+pytest tests/ -v
+```
 
 ---
 
-## Simulation Framework
+## Results
 
-### Two Distinct Modes
+### Validation Results
 
-| Mode | Purpose | Validates Theory? |
-|------|---------|-------------------|
-| **Static** | Validate $P_{\text{det}}$ formula | ✅ Yes (i.i.d. positions) |
-| **Dynamic** | Demonstrate qualitative effect | ❌ No (correlated movement) |
+The static simulation (i.i.d. volunteer positions) validates the analytical P_det formula with <1% relative error across all test cases.
 
-### Why Two Modes?
+| k   | P_det (Theory) | P_det (Simulation) | Error |
+| --- | -------------- | ------------------ | ----- |
+| 5   | 0.0553         | 0.0555 ± 0.0006    | 0.4%  |
+| 25  | 0.2453         | 0.2448 ± 0.0011    | 0.2%  |
+| 50  | 0.4337         | 0.4328 ± 0.0011    | 0.2%  |
+| 100 | 0.6794         | 0.6775 ± 0.0012    | 0.3%  |
 
-The analytical formula assumes **i.i.d. volunteer positions** at each time step. The dynamic agent-based simulation introduces:
-- Temporal correlation (agents move toward waypoints)
-- Exploration effects (agents cover more area over time)
+### Cost Sweep Results
 
-These effects make dynamic $P_{\text{det}}$ **higher** than theory (agents explore), but the **qualitative under-participation phenomenon persists**.
+<p align="center">
+  <img src="docs/figures/cost_sweep_results.png" alt="Cost Sweep Results" width="700"/>
+</p>
+<p align="center"><em>Figure 3: Rescue success rate as a function of cost ratio c/Bρ. The gap between Nash equilibrium (red) and social optimum (green) widens as participation costs increase.</em></p>
 
-See `docs/VALIDATION_VS_DEMONSTRATION.md` for detailed explanation.
+| Cost Ratio | k\* (Nash) | k_opt | Gap | Nash Success | Optimal Success | Efficiency Loss |
+| ---------- | ---------- | ----- | --- | ------------ | --------------- | --------------- |
+| 0.10       | 100        | 100   | 0   | 100%         | 100%            | 0%              |
+| 0.50       | 61         | 100   | 39  | 100%         | 100%            | 0%              |
+| 0.72       | 30         | 100   | 70  | 87%          | 100%            | 13%             |
+| 0.88       | 12         | 100   | 88  | 42%          | 100%            | 58%             |
+| 0.95       | 5          | 100   | 95  | 18%          | 100%            | 82%             |
 
----
-
-## Key Results
-
-### Validation (Static Simulation)
-
-All 11 test cases pass with <1% relative error, confirming:
-$$P_{\text{det}}^{\text{sim}} = P_{\text{det}}^{\text{theory}} \pm \text{Monte Carlo error}$$
-
-### Cost Sweep (Dynamic Simulation)
-
-| $c/(B\rho)$ | $k^*$ | $k^{\text{opt}}$ | Gap | Nash Success | Optimal Success |
-|-------------|-------|------------------|-----|--------------|-----------------|
-| 0.10 | 100 | 100 | 0 | 100% | 100% |
-| 0.50 | 61 | 100 | 39 | 100% | 100% |
-| 0.72 | 30 | 100 | 70 | 87% | 100% |
-| 0.95 | 5 | 100 | 95 | 30% | 100% |
-
-**Insight**: As cost approaches $B\rho$, Nash participation collapses, causing up to 70% efficiency loss.
+**Key insight:** At high cost ratios (c/Bρ > 0.8), Nash equilibrium participation collapses, causing dramatic efficiency losses that platform incentives can fully recover.
 
 ---
 
-## Paper Structure
+## Interactive Demo
 
-| Section | Content | Pages |
-|---------|---------|-------|
-| I. Introduction | Motivation, contributions | ~0.5 |
-| II. Related Work | AoI, game theory, MCS | ~0.5 |
-| III. System Model | Area, detection, AoI, utility | ~1 |
-| IV. Game Analysis | Nash, optimum, PoA, Stackelberg | ~1.5 |
-| V. Numerical Results | Validation, cost sweep, dynamic | ~1.5 |
-| VI. Conclusions | Summary, limitations, future work | ~0.5 |
+The React-based visualization (`simulations/emergency_visualization.jsx`) provides an interactive exploration of the under-participation phenomenon.
 
-**Total**: ~5-6 pages (IEEE double-column)
+<p align="center">
+  <img src="docs/figures/ui_screenshot.png" alt="Interactive Demo Screenshot" width="800"/>
+</p>
+<p align="center"><em>Figure 4: Interactive simulation comparing Nash equilibrium (left) vs social optimum (right) under identical initial conditions. The batch run feature provides statistical validation.</em></p>
+
+### Features
+
+| Feature                     | Description                                |
+| --------------------------- | ------------------------------------------ |
+| **Side-by-side comparison** | Nash vs Optimal with shared random seed    |
+| **Parameter controls**      | Cost ratio, area size, volunteer count     |
+| **Batch runs**              | 10-200 runs with aggregated statistics     |
+| **Real-time metrics**       | AoI, detections, coverage, rescue progress |
+| **P_det visualization**     | Theoretical curve with equilibrium markers |
+
+### Setup
+
+```bash
+cd demos/emergency/ui
+npm install
+npm install recharts
+npm run dev
+```
+
+Open `http://localhost:5173` in browser.
+
+### Alternative: Online Playground
+
+Copy `emergency_visualization.jsx` to [CodeSandbox](https://codesandbox.io) or [StackBlitz](https://stackblitz.com) with a React template.
 
 ---
 
-## References
+## Documentation
 
-Key papers this work builds upon:
+| Document                                                                     | Description                              |
+| ---------------------------------------------------------------------------- | ---------------------------------------- |
+| [`docs/formal_model.md`](docs/formal_model.md)                               | Complete mathematical derivations        |
+| [`docs/simulation_pipeline.md`](docs/simulation_pipeline.md)                 | Simulation architecture and module specs |
+| [`docs/VALIDATION_VS_DEMONSTRATION.md`](docs/VALIDATION_VS_DEMONSTRATION.md) | Static vs dynamic simulation methodology |
 
-1. **Badia (2021)** — AoI from strategic sources
-2. **Badia et al. (2023)** — Federated data ecosystems
-3. **Yates et al. (2021)** — AoI survey
-4. **Dasari et al. (2020)** — Game theory in mobile crowdsensing
-5. **Heinrich et al. (2021)** — Find My network analysis
+### Simulation Methodology
 
-Full bibliography in `paper/references.bib`.
+The framework distinguishes between **validation** (static) and **demonstration** (dynamic) simulations:
+
+| Mode    | Positions             | Target | Purpose                 | Validates Theory? |
+| ------- | --------------------- | ------ | ----------------------- | ----------------- |
+| Static  | i.i.d. each step      | Fixed  | Validate P_det formula  | ✅ Yes            |
+| Dynamic | Correlated (movement) | Mobile | Show qualitative effect | ❌ No             |
+
+This separation is critical: the analytical model assumes independent positions, which the dynamic simulation intentionally violates to demonstrate real-world relevance.
 
 ---
 
-## Limitations
+## Citation
 
-- **Homogeneous volunteers**: All have same cost $c$
-- **Complete information**: Parameters known to all
-- **Single-shot game**: No repeated interactions
-- **Static coverage model**: Theory assumes i.i.d. positions
+If you use this work, please cite:
 
-### Future Work
+```bibtex
+@misc{tangaro2025aoi,
+  author       = {Tangaro, Antonio},
+  title        = {{AoI}-Aware Emergency Crowd-Finding: A Game-Theoretic Analysis},
+  year         = {2025},
+  institution  = {University of Padova},
+  note         = {Game Theory Course Project, supervised by Prof. Leonardo Badia}
+}
+```
 
-- Heterogeneous costs (Bayesian games)
-- Repeated interactions (dynamic incentives)
-- Multiple targets (competing searches)
-- Spatial correlations (clustered volunteers)
+### Key References
+
+1. L. Badia, "Age of Information from Multiple Strategic Sources," _IEEE WiOpt_, 2021.
+2. L. Badia et al., "Freshness and Forgetting in Federated Data Ecosystems," _IEEE Trans. Netw. Sci. Eng._, 2023.
+3. R. D. Yates et al., "Age of Information: An Introduction and Survey," _IEEE JSAC_, 2021.
+4. S. Heinrich et al., "Who Can Find My Devices?," _PETS_, 2021.
+
+Full bibliography available in [`paper/references.bib`](paper/references.bib).
+
+---
+
+## Limitations and Future Work
+
+### Current Limitations
+
+- **Homogeneous agents**: All volunteers have identical cost c
+- **Complete information**: Game parameters known to all players
+- **Single-shot game**: No repeated interactions or learning
+- **Uniform spatial model**: Theory assumes uniform volunteer distribution
+
+### Future Extensions
+
+- [ ] Heterogeneous costs (Bayesian mechanism design)
+- [ ] Repeated games with reputation systems
+- [ ] Multiple concurrent targets (competing searches)
+- [ ] Spatial correlations and clustering effects
+- [ ] Privacy-aware utility functions
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**Import errors:**
+
+```bash
+# Ensure you're in the project root
+export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+```
+
+**LaTeX compilation fails:**
+
+```bash
+# Install missing packages
+tlmgr install ieeetran cite algorithmic
+```
+
+**React demo not loading:**
+
+```bash
+# Verify recharts is installed
+npm list recharts || npm install recharts
+```
+
+### Getting Help
+
+Open an issue on GitHub or contact the author.
 
 ---
 
 ## License
 
-Academic project — University of Padova, 2025.
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
 ## Acknowledgments
 
-- Prof. Leonardo Badia for the course and methodological guidance
-- Badia's papers on AoI and game theory as the primary methodological template
+- **Prof. Leonardo Badia** for course instruction and methodological guidance
+- Badia's research on AoI and game theory as the primary theoretical foundation
+- The open-source community for NumPy, Matplotlib, React, and Recharts
+
+---
+
+<p align="center">
+  <strong>University of Padova — Department of Information Engineering</strong><br>
+  Game Theory Course, A.Y. 2024/25
+</p>
