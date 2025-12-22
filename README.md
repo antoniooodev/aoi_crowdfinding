@@ -65,9 +65,9 @@ cd paper && pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex ma
 Emergency crowd-finding networks (e.g., Apple Find My, Samsung SmartThings) leverage volunteers' devices to locate missing persons or objects. Each volunteer incurs a cost (battery, bandwidth, privacy) to participate, while detection benefits are shared by all.
 
 <p align="center">
-  <img src="docs/figures/system_diagram.png" alt="System Diagram" width="700"/>
+  <img src="https://i.ibb.co/gLvRqg6r/spatial-snapshot.png" alt="System Diagram" width="700"/>
 </p>
-<p align="center"><em>Figure 1: Emergency crowd-finding system. N volunteers with detection radius R search for a target in area L². The platform must incentivize participation to maximize detection probability.</em></p>
+<p align="center"><em>Figure 1: Spatial configuration showing N=100 volunteers (22 active, 78 inactive) searching for a target in area L². The detection zone (red circle) indicates the radius R within which volunteers can detect the target.</em></p>
 
 ### Research Questions
 
@@ -113,9 +113,9 @@ $$\Delta k = k^{\text{opt}} - k^* \approx \frac{\ln(N)}{\rho}$$
 $$p^* = c - B\rho(1-\rho)^{k^{\text{opt}}-1}$$
 
 <p align="center">
-  <img src="docs/figures/pdet_curve.png" alt="Detection Probability Curve" width="600"/>
+  <img src="https://i.ibb.co/kgr0gwFM/complete-analysis.png" alt="Detection Probability Curve" width="600"/>
 </p>
-<p align="center"><em>Figure 2: Detection probability P_det(k) showing the gap between Nash equilibrium k* and social optimum k_opt. The shaded area represents the efficiency loss from under-participation.</em></p>
+<p align="center"><em>Figure 2: Complete analysis showing (top row) P_det validation, relative error, and participation gap; (bottom row) theoretical AoI comparison, rescue success rate from dynamic simulation, and summary statistics. The shaded regions highlight efficiency loss from under-participation.</em></p>
 
 ---
 
@@ -286,9 +286,9 @@ The static simulation (i.i.d. volunteer positions) validates the analytical P_de
 ### Cost Sweep Results
 
 <p align="center">
-  <img src="docs/figures/cost_sweep_results.png" alt="Cost Sweep Results" width="700"/>
+  <img src="https://i.ibb.co/KjRFXYWM/welfare-comparison.png" alt="Cost Sweep Results" width="700"/>
 </p>
-<p align="center"><em>Figure 3: Rescue success rate as a function of cost ratio c/Bρ. The gap between Nash equilibrium (red) and social optimum (green) widens as participation costs increase.</em></p>
+<p align="center"><em>Figure 3: Social welfare comparison. Nash equilibrium welfare (blue) collapses as cost increases, while the Stackelberg mechanism (red) successfully recovers the social optimum (green) through platform incentives.</em></p>
 
 | Cost Ratio | k\* (Nash) | k_opt | Gap | Nash Success | Optimal Success | Efficiency Loss |
 | ---------- | ---------- | ----- | --- | ------------ | --------------- | --------------- |
