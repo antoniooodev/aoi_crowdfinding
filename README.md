@@ -6,7 +6,6 @@
 
 > **Game Theory Course Project** — University of Padova, 2024/25  
 > **Author**: Antonio Tangaro  
-> **Supervisor**: Prof. Leonardo Badia
 
 ---
 
