@@ -346,22 +346,6 @@ The theoretical foundation builds on Badia's work on Age of Information from mul
 
 ---
 
-## Limitations and Future Work
-
-### Current Limitations
-
-The current model assumes complete information where all game parameters are known to players, and considers only single-shot interactions without repeated games or learning dynamics. The spatial model assumes uniform volunteer distribution without clustering effects.
-
-### Completed Extensions
-
-The heterogeneous cost extension is now complete, allowing each volunteer to have a private cost drawn from a distribution. This extension includes full theoretical analysis with 18 theorems covering threshold equilibrium characterization, order statistics for social optimum, and adapted Stackelberg mechanism design.
-
-### Future Directions
-
-Potential extensions include repeated games with reputation systems, multiple concurrent targets (competing searches), spatial correlations and clustering effects, and privacy-aware utility functions.
-
----
-
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
