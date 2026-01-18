@@ -285,3 +285,357 @@ def suggest_parameters(N: int = 100, R: float = 10.0, L: float = 100.0, B: float
     print(f"")
     print(f"For PoA analysis (need k* > 0):")
     print(f"  Restrict to: c < {B_rho:.4f}")
+
+
+# =============================================================================
+# HETEROGENEOUS COST MODEL EXTENSIONS (Version 2.0)
+# =============================================================================
+
+try:
+    from scipy import stats
+    SCIPY_AVAILABLE = True
+except ImportError:
+    SCIPY_AVAILABLE = False
+
+
+def uniform_cdf(c: float, c_min: float, c_max: float) -> float:
+    """CDF of uniform distribution on [c_min, c_max]."""
+    if c <= c_min:
+        return 0.0
+    if c >= c_max:
+        return 1.0
+    return (c - c_min) / (c_max - c_min)
+
+
+def uniform_pdf(c: float, c_min: float, c_max: float) -> float:
+    """PDF of uniform distribution on [c_min, c_max]."""
+    if c < c_min or c > c_max:
+        return 0.0
+    return 1.0 / (c_max - c_min)
+
+
+def uniform_quantile(q: float, c_min: float, c_max: float) -> float:
+    """Quantile function (inverse CDF) of uniform distribution."""
+    return c_min + q * (c_max - c_min)
+
+
+def truncated_normal_cdf(c: float, c_min: float, c_max: float, 
+                         mu: float, sigma: float) -> float:
+    """CDF of truncated normal distribution on [c_min, c_max]."""
+    if not SCIPY_AVAILABLE:
+        raise ImportError("scipy required for truncated normal distribution")
+    if c <= c_min:
+        return 0.0
+    if c >= c_max:
+        return 1.0
+    
+    a = (c_min - mu) / sigma
+    b = (c_max - mu) / sigma
+    z = (c - mu) / sigma
+    
+    Phi_a = stats.norm.cdf(a)
+    Phi_b = stats.norm.cdf(b)
+    Phi_z = stats.norm.cdf(z)
+    
+    return (Phi_z - Phi_a) / (Phi_b - Phi_a)
+
+
+def truncated_normal_quantile(q: float, c_min: float, c_max: float,
+                              mu: float, sigma: float) -> float:
+    """Quantile function of truncated normal distribution."""
+    if not SCIPY_AVAILABLE:
+        raise ImportError("scipy required for truncated normal distribution")
+    
+    a = (c_min - mu) / sigma
+    b = (c_max - mu) / sigma
+    
+    Phi_a = stats.norm.cdf(a)
+    Phi_b = stats.norm.cdf(b)
+    
+    target_Phi = Phi_a + q * (Phi_b - Phi_a)
+    z = stats.norm.ppf(target_Phi)
+    
+    return mu + sigma * z
+
+
+def truncated_exponential_cdf(c: float, c_min: float, c_max: float,
+                              lambda_exp: float) -> float:
+    """CDF of truncated exponential distribution on [c_min, c_max]."""
+    if c <= c_min:
+        return 0.0
+    if c >= c_max:
+        return 1.0
+    
+    numerator = 1 - np.exp(-lambda_exp * (c - c_min))
+    denominator = 1 - np.exp(-lambda_exp * (c_max - c_min))
+    
+    return numerator / denominator
+
+
+def truncated_exponential_quantile(q: float, c_min: float, c_max: float,
+                                   lambda_exp: float) -> float:
+    """Quantile function of truncated exponential distribution."""
+    denom = 1 - np.exp(-lambda_exp * (c_max - c_min))
+    return c_min - np.log(1 - q * denom) / lambda_exp
+
+
+@dataclass
+class HeterogeneousCostParams:
+    """
+    Heterogeneous cost distribution parameters.
+    
+    Supports: uniform, truncated_normal, truncated_exponential
+    
+    Parameters
+    ----------
+    c_min : float
+        Minimum cost
+    c_max : float
+        Maximum cost
+    distribution : str
+        Distribution type: "uniform", "truncated_normal", "truncated_exponential"
+    mu : float, optional
+        Mean for truncated normal (defaults to midpoint)
+    sigma : float, optional
+        Std dev for truncated normal (defaults to (c_max-c_min)/4)
+    lambda_exp : float, optional
+        Rate for truncated exponential (defaults to 2/(c_max-c_min))
+    """
+    c_min: float = 0.5
+    c_max: float = 2.0
+    distribution: str = "uniform"
+    mu: Optional[float] = None
+    sigma: Optional[float] = None
+    lambda_exp: Optional[float] = None
+    
+    def __post_init__(self):
+        assert self.c_min > 0, "Minimum cost must be positive"
+        assert self.c_max >= self.c_min, "Maximum cost must be >= minimum"
+        assert self.distribution in ["uniform", "truncated_normal", "truncated_exponential"], \
+            f"Unknown distribution: {self.distribution}"
+        
+        # Set defaults for distribution parameters
+        if self.distribution == "truncated_normal":
+            if self.mu is None:
+                self.mu = (self.c_min + self.c_max) / 2
+            if self.sigma is None:
+                self.sigma = (self.c_max - self.c_min) / 4
+        
+        if self.distribution == "truncated_exponential":
+            if self.lambda_exp is None:
+                self.lambda_exp = 2.0 / (self.c_max - self.c_min)
+    
+    @property
+    def mean_cost(self) -> float:
+        """Expected cost E[c_i]."""
+        if self.distribution == "uniform":
+            return (self.c_min + self.c_max) / 2
+        elif self.distribution == "truncated_normal":
+            from scipy.integrate import quad
+            def integrand(c):
+                return c * self.pdf(c)
+            result, _ = quad(integrand, self.c_min, self.c_max)
+            return result
+        elif self.distribution == "truncated_exponential":
+            from scipy.integrate import quad
+            def integrand(c):
+                return c * self.pdf(c)
+            result, _ = quad(integrand, self.c_min, self.c_max)
+            return result
+        return (self.c_min + self.c_max) / 2
+    
+    @property
+    def cost_spread(self) -> float:
+        """Cost spread Δc = c_max - c_min."""
+        return self.c_max - self.c_min
+    
+    @property
+    def is_homogeneous(self) -> bool:
+        """True if c_min == c_max (degenerate distribution)."""
+        return np.isclose(self.c_min, self.c_max)
+    
+    @property
+    def heterogeneity_ratio(self) -> float:
+        """Ratio c_max / c_min, measuring spread."""
+        return self.c_max / self.c_min
+    
+    def cdf(self, c: float) -> float:
+        """Cumulative distribution function F(c) = P(c_i <= c)."""
+        if self.distribution == "uniform":
+            return uniform_cdf(c, self.c_min, self.c_max)
+        elif self.distribution == "truncated_normal":
+            return truncated_normal_cdf(c, self.c_min, self.c_max, self.mu, self.sigma)
+        elif self.distribution == "truncated_exponential":
+            return truncated_exponential_cdf(c, self.c_min, self.c_max, self.lambda_exp)
+        raise ValueError(f"Unknown distribution: {self.distribution}")
+    
+    def pdf(self, c: float) -> float:
+        """Probability density function f(c)."""
+        if c < self.c_min or c > self.c_max:
+            return 0.0
+        
+        if self.distribution == "uniform":
+            return uniform_pdf(c, self.c_min, self.c_max)
+        elif self.distribution == "truncated_normal":
+            a = (self.c_min - self.mu) / self.sigma
+            b = (self.c_max - self.mu) / self.sigma
+            z = (c - self.mu) / self.sigma
+            normalizer = stats.norm.cdf(b) - stats.norm.cdf(a)
+            return stats.norm.pdf(z) / (self.sigma * normalizer)
+        elif self.distribution == "truncated_exponential":
+            normalizer = 1 - np.exp(-self.lambda_exp * (self.c_max - self.c_min))
+            return self.lambda_exp * np.exp(-self.lambda_exp * (c - self.c_min)) / normalizer
+        raise ValueError(f"Unknown distribution: {self.distribution}")
+    
+    def quantile(self, q: float) -> float:
+        """Quantile function F^{-1}(q)."""
+        q = np.clip(q, 0.0, 1.0)
+        
+        if self.distribution == "uniform":
+            return uniform_quantile(q, self.c_min, self.c_max)
+        elif self.distribution == "truncated_normal":
+            return truncated_normal_quantile(q, self.c_min, self.c_max, self.mu, self.sigma)
+        elif self.distribution == "truncated_exponential":
+            return truncated_exponential_quantile(q, self.c_min, self.c_max, self.lambda_exp)
+        raise ValueError(f"Unknown distribution: {self.distribution}")
+    
+    def sample(self, n: int, rng: Optional[np.random.Generator] = None) -> np.ndarray:
+        """Sample n costs from the distribution."""
+        if rng is None:
+            rng = np.random.default_rng()
+        
+        if self.distribution == "uniform":
+            return rng.uniform(self.c_min, self.c_max, size=n)
+        elif self.distribution == "truncated_normal":
+            u = rng.uniform(0, 1, size=n)
+            return np.array([self.quantile(ui) for ui in u])
+        elif self.distribution == "truncated_exponential":
+            u = rng.uniform(0, 1, size=n)
+            return np.array([self.quantile(ui) for ui in u])
+        raise ValueError(f"Unknown distribution: {self.distribution}")
+    
+    def is_log_concave(self) -> bool:
+        """
+        Check if the distribution is log-concave.
+        
+        Log-concavity guarantees uniqueness of Nash equilibrium.
+        """
+        return self.distribution in ["uniform", "truncated_normal", "truncated_exponential"]
+    
+    def expected_sum_of_k_lowest(self, k: int, N: int) -> float:
+        """
+        Expected sum of k lowest order statistics from N samples.
+        
+        For uniform: E[sum of k lowest] = k * c_min + k(k+1)/(2(N+1)) * Δc
+        """
+        if k <= 0:
+            return 0.0
+        if k > N:
+            k = N
+        
+        if self.distribution == "uniform":
+            delta_c = self.c_max - self.c_min
+            return k * self.c_min + k * (k + 1) / (2 * (N + 1)) * delta_c
+        else:
+            # Numerical approximation: E[c_{(j)}] ≈ F^{-1}(j/(N+1))
+            total = 0.0
+            for j in range(1, k + 1):
+                total += self.quantile(j / (N + 1))
+            return total
+    
+    def expected_kth_order_statistic(self, k: int, N: int) -> float:
+        """Expected value of k-th order statistic from N samples."""
+        if k <= 0 or k > N:
+            raise ValueError(f"k must be in [1, N], got k={k}, N={N}")
+        
+        if self.distribution == "uniform":
+            return self.c_min + k / (N + 1) * self.cost_spread
+        else:
+            return self.quantile(k / (N + 1))
+    
+    @classmethod
+    def from_homogeneous(cls, c: float) -> 'HeterogeneousCostParams':
+        """Create a degenerate (homogeneous) distribution with single cost c."""
+        return cls(c_min=c, c_max=c, distribution="uniform")
+
+
+@dataclass
+class HeterogeneousSimConfig:
+    """Complete simulation configuration with heterogeneous costs."""
+    physical: PhysicalParams = field(default_factory=PhysicalParams)
+    N: int = 100
+    B: float = 10.0
+    cost_params: HeterogeneousCostParams = field(default_factory=HeterogeneousCostParams)
+    simulation: SimulationParams = field(default_factory=SimulationParams)
+    
+    @property
+    def L(self) -> float:
+        return self.physical.L
+    
+    @property
+    def R(self) -> float:
+        return self.physical.R
+    
+    @property
+    def rho(self) -> float:
+        return self.physical.rho
+    
+    @property
+    def B_rho(self) -> float:
+        return self.B * self.rho
+    
+    @property
+    def NB_rho(self) -> float:
+        return self.N * self.B * self.rho
+    
+    @property
+    def c_min(self) -> float:
+        return self.cost_params.c_min
+    
+    @property
+    def c_max(self) -> float:
+        return self.cost_params.c_max
+
+
+def compute_heterogeneity_sweep(
+    mean_cost: float,
+    spread_ratios: List[float],
+) -> List[HeterogeneousCostParams]:
+    """
+    Generate cost parameters with varying heterogeneity around fixed mean.
+    
+    Parameters
+    ----------
+    mean_cost : float
+        Mean cost (fixed)
+    spread_ratios : list of float
+        List of c_max/c_min ratios to test
+    
+    Returns
+    -------
+    params_list : list of HeterogeneousCostParams
+    """
+    result = []
+    for ratio in spread_ratios:
+        c_min = 2 * mean_cost / (1 + ratio)
+        c_max = ratio * c_min
+        result.append(HeterogeneousCostParams(c_min=c_min, c_max=c_max))
+    return result
+
+
+def print_heterogeneous_thresholds(N: int, rho: float, B: float, 
+                                    cost_params: HeterogeneousCostParams):
+    """Print thresholds for heterogeneous model."""
+    print(f"=== Heterogeneous Model Thresholds ===")
+    print(f"N = {N}, ρ = {rho:.6f}, B = {B}")
+    print(f"Cost distribution: {cost_params.distribution}")
+    print(f"c_min = {cost_params.c_min:.4f}, c_max = {cost_params.c_max:.4f}")
+    print(f"Mean cost = {cost_params.mean_cost:.4f}")
+    print(f"Heterogeneity ratio = {cost_params.heterogeneity_ratio:.2f}")
+    print(f"Bρ = {B * rho:.4f}")
+    print(f"NBρ = {N * B * rho:.4f}")
+    print(f"Log-concave? {cost_params.is_log_concave()}")
+
+
+# Default heterogeneous configuration
+DEFAULT_HETEROGENEOUS_COSTS = HeterogeneousCostParams(c_min=0.5, c_max=2.0, distribution="uniform")

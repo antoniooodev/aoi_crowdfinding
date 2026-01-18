@@ -1,7 +1,5 @@
 # Age of Information-Aware Crowd-Finding for Emergency Search: A Game-Theoretic Analysis
 
-## Formal Model Definition and Theoretical Analysis
-
 ---
 
 # PHASE 1: MODEL FORMALIZATION
@@ -18,23 +16,24 @@ $$\mathcal{A} = [0, L] \times [0, L] \subset \mathbb{R}^2$$
 
 where $L > 0$ denotes the side length of the square search area. The total area is $|\mathcal{A}| = L^2$.
 
-### 1.1.2 Network Entities
-
 The system comprises three types of entities:
 
 **Target (Missing Person/Device):**
+
 - Single target located at position $\mathbf{x}_T \in \mathcal{A}$
 - Emits periodic beacon signals (Bluetooth Low Energy, LoRa, or similar)
 - Beacon transmission period: $T_b$ (time slots between consecutive beacons)
 - For simplicity, we assume $T_b = 1$ (beacon every slot), relaxed in extensions
 
 **Volunteers (Crowd Participants):**
+
 - Set of $N$ volunteers: $\mathcal{N} = \{1, 2, \ldots, N\}$
 - Volunteer $i$ located at position $\mathbf{x}_i \in \mathcal{A}$
 - Each volunteer carries a mobile device capable of detecting beacons
 - Detection radius: $R > 0$ (maximum distance for successful beacon reception)
 
 **Control Center (Receiver):**
+
 - Central entity aggregating location updates from volunteers
 - Interested in maintaining fresh information about target location
 - Passive in the game (not a strategic player)
@@ -45,11 +44,11 @@ The system comprises three types of entities:
 
 We consider two models for volunteer positioning:
 
-*Static Uniform Model:*
+_Static Uniform Model:_
 Volunteer positions are drawn independently and uniformly at random:
 $$\mathbf{x}_i \sim \text{Uniform}(\mathcal{A}), \quad \forall i \in \mathcal{N}$$
 
-*Mobility Model (Extension):*
+_Mobility Model (Extension):_
 Volunteers move according to a Random Waypoint or Brownian motion model with velocity $v$ and position updated each slot. For the base analysis, we focus on the static model.
 
 **Target Position:**
@@ -77,6 +76,11 @@ $$p_{\text{cov}} \approx \frac{\pi R^2}{L^2}$$
 We define the coverage ratio:
 $$\rho = \frac{\pi R^2}{L^2} \in (0, 1)$$
 
+**Remark (Boundary Effects):** The exact coverage probability accounting for boundary effects is:
+$$\rho_{\text{exact}} = \frac{1}{L^2}\int_0^L\int_0^L |\mathcal{D}(x,y) \cap \mathcal{A}| \, dx\, dy$$
+
+For $R \ll L$, the error is $O(R/L)$, which we neglect in the analysis.
+
 ### 1.1.5 Time Model
 
 - Discrete time axis: $t \in \{0, 1, 2, \ldots\}$
@@ -92,13 +96,17 @@ Each volunteer $i$ makes a binary participation decision:
 $$a_i \in \{0, 1\}$$
 
 where:
+
 - $a_i = 1$: Volunteer is **active** (device scanning for beacons, willing to report)
 - $a_i = 0$: Volunteer is **inactive** (device idle, not participating)
 
 The action profile is $\mathbf{a} = (a_1, a_2, \ldots, a_N) \in \{0, 1\}^N$.
 
+The set of active volunteers is:
+$$S = \{i \in \mathcal{N} : a_i = 1\}$$
+
 The number of active volunteers is:
-$$k = \sum_{i=1}^{N} a_i$$
+$$k = |S| = \sum_{i=1}^{N} a_i$$
 
 ---
 
@@ -123,7 +131,7 @@ Given $k$ active volunteers with independent uniformly distributed positions, th
 
 $$P_{\text{det}}(k) = 1 - (1 - \rho)^k = 1 - \left(1 - \frac{\pi R^2}{L^2}\right)^k$$
 
-*Proof:*
+_Proof:_
 Each active volunteer independently covers the target with probability $\rho$. The probability that none of the $k$ volunteers covers the target is $(1-\rho)^k$. Thus, the probability of at least one detection is $1 - (1-\rho)^k$. $\square$
 
 **Properties of $P_{\text{det}}(k)$:**
@@ -133,10 +141,10 @@ Each active volunteer independently covers the target with probability $\rho$. T
 3. $\lim_{k \to \infty} P_{\text{det}}(k) = 1$
 4. $P_{\text{det}}(k)$ is concave in $k$ (diminishing returns)
 
-*Proof of concavity:*
+_Proof of concavity:_
 $$\frac{\partial^2 P_{\text{det}}}{\partial k^2} = (1-\rho)^k (\ln(1-\rho))^2 > 0$$
 
-Wait, this shows convexity of $(1-\rho)^k$, hence $P_{\text{det}}(k) = 1 - (1-\rho)^k$ is concave. $\square$
+This shows convexity of $(1-\rho)^k$, hence $P_{\text{det}}(k) = 1 - (1-\rho)^k$ is concave. $\square$
 
 ### 1.2.3 Expected Age of Information
 
@@ -145,7 +153,7 @@ Under stationary conditions with detection probability $P_{\text{det}}(k)$ per s
 
 $$\bar{\Delta}(k) = \frac{1}{P_{\text{det}}(k)} - 1 = \frac{(1-\rho)^k}{1 - (1-\rho)^k}$$
 
-*Proof:*
+_Proof:_
 The time between successful updates follows a geometric distribution with success probability $P_{\text{det}}(k)$. Let $Y$ be the inter-update time. Then $\mathbb{E}[Y] = 1/P_{\text{det}}(k)$.
 
 For a renewal process with i.i.d. inter-arrival times, the time-average AoI is (from Yates et al., 2021):
@@ -176,11 +184,14 @@ $$\delta\bar{\Delta}(k) = \bar{\Delta}(k-1) - \bar{\Delta}(k)$$
 **Lemma 2:**
 $$\delta\bar{\Delta}(k) = \frac{\rho}{P_{\text{det}}(k) \cdot P_{\text{det}}(k-1)}$$
 
-*Proof:*
+_Proof:_
+
+$$
 \begin{align}
-\delta\bar{\Delta}(k) &= \frac{1}{P_{\text{det}}(k-1)} - \frac{1}{P_{\text{det}}(k)} \\
-&= \frac{P_{\text{det}}(k) - P_{\text{det}}(k-1)}{P_{\text{det}}(k) \cdot P_{\text{det}}(k-1)}
+\delta\bar{\Delta}(k) &= \frac{1}{P\,\text{det}(k-1)} - \frac{1}{P\,\text{det}(k)} \\
+&= \frac{P\,\text{det}(k) - P\,\text{det}(k-1)}{P\,\text{det}(k)\cdot P\,\text{det}(k-1)}
 \end{align}
+$$
 
 Now, $P_{\text{det}}(k) - P_{\text{det}}(k-1) = (1-\rho)^{k-1} - (1-\rho)^k = (1-\rho)^{k-1}\rho$.
 
@@ -202,6 +213,7 @@ We model the volunteer participation problem as a static game of complete inform
 $$\mathcal{G} = \langle \mathcal{N}, \{A_i\}_{i \in \mathcal{N}}, \{U_i\}_{i \in \mathcal{N}} \rangle$$
 
 where:
+
 - $\mathcal{N} = \{1, \ldots, N\}$: Set of players (volunteers)
 - $A_i = \{0, 1\}$: Action set for player $i$
 - $U_i: \{0,1\}^N \to \mathbb{R}$: Utility function for player $i$
@@ -209,6 +221,7 @@ where:
 ### 1.3.2 Benefit Function
 
 The benefit from fresh information is captured by a function $f: \mathbb{R}_+ \to \mathbb{R}_+$ that is:
+
 - Strictly decreasing in AoI (fresher information is more valuable)
 - Bounded above
 - Continuously differentiable
@@ -223,492 +236,684 @@ $$f(\bar{\Delta}(k)) = \frac{B}{1 + \frac{1}{P_{\text{det}}(k)} - 1} = B \cdot P
 
 This elegant simplification shows that the benefit is directly proportional to the detection probability.
 
-**Alternative Benefit Functions:**
+### 1.3.3 Heterogeneous Cost Model
 
-1. *Exponential decay:* $f(\bar{\Delta}) = B \cdot e^{-\alpha \bar{\Delta}}$
-2. *Threshold:* $f(\bar{\Delta}) = B \cdot \mathbf{1}_{\{\bar{\Delta} \leq \Delta_{\max}\}}$
-3. *Linear decay:* $f(\bar{\Delta}) = \max\{0, B - \beta \bar{\Delta}\}$
+**Motivation:** In practice, volunteers have different participation costs due to:
 
-### 1.3.3 Cost Function
+- Device battery levels (older phones drain faster)
+- Data plan constraints (metered vs. unlimited)
+- Privacy sensitivity (varies by individual)
+- Opportunity cost (busy vs. idle users)
+- Location (indoor vs. outdoor affects scanning effort)
 
-Each active volunteer incurs a cost $c > 0$ representing:
-- Battery consumption for beacon scanning
-- Computational overhead
-- Privacy/security concerns
-- Opportunity cost of participation
+**Definition (Cost Distribution):**
+Each volunteer $i$ has a private participation cost $c_i$ drawn independently from a distribution $F$ with support $[c_{\min}, c_{\max}]$:
 
-The cost function is:
-$$C_i(a_i) = c \cdot a_i$$
+$$c_i \stackrel{\text{i.i.d.}}{\sim} F \quad \text{on } [c_{\min}, c_{\max}]$$
+
+where $0 < c_{\min} \leq c_{\max} < \infty$.
+
+**Notation:**
+
+- $F(c) = \Pr(c_i \leq c)$: Cumulative distribution function (CDF)
+- $f(c) = F'(c)$: Probability density function (PDF), when it exists
+- $\bar{F}(c) = 1 - F(c)$: Survival function
+- $F^{-1}(q) = \inf\{c : F(c) \geq q\}$: Quantile function
+
+**Standard Distributions:**
+
+| Distribution          | CDF $F(c)$                                                                                                                                     | Support                | Parameters                        |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | --------------------------------- |
+| Uniform               | $\frac{c - c_{\min}}{c_{\max} - c_{\min}}$                                                                                                     | $[c_{\min}, c_{\max}]$ | $c_{\min}, c_{\max}$              |
+| Truncated Exponential | $\frac{1 - e^{-\lambda(c - c_{\min})}}{1 - e^{-\lambda(c_{\max} - c_{\min})}}$                                                                 | $[c_{\min}, c_{\max}]$ | $\lambda, c_{\min}, c_{\max}$     |
+| Truncated Normal      | $\frac{\Phi(\frac{c-\mu}{\sigma}) - \Phi(\frac{c_{\min}-\mu}{\sigma})}{\Phi(\frac{c_{\max}-\mu}{\sigma}) - \Phi(\frac{c_{\min}-\mu}{\sigma})}$ | $[c_{\min}, c_{\max}]$ | $\mu, \sigma, c_{\min}, c_{\max}$ |
+
+**Homogeneous Case as Limit:**
+The homogeneous model with common cost $c$ is recovered as:
+$$F(x) = \mathbf{1}_{\{x \geq c\}} \quad \text{(degenerate distribution)}$$
 
 ### 1.3.4 Utility Function
 
-**Definition (Volunteer Utility):**
-The utility of volunteer $i$ given action profile $\mathbf{a}$ is:
+**Definition (Volunteer Utility with Heterogeneous Costs):**
+The utility of volunteer $i$ with cost $c_i$, given action profile $\mathbf{a}$, is:
 
-$$U_i(\mathbf{a}) = f(\bar{\Delta}(k)) - c \cdot a_i$$
+$$U_i(\mathbf{a}; c_i) = B \cdot P_{\text{det}}(k) - c_i \cdot a_i$$
 
 where $k = \sum_{j=1}^{N} a_j$ is the total number of active volunteers.
-
-**With our chosen benefit function:**
-$$U_i(\mathbf{a}) = B \cdot P_{\text{det}}(k) - c \cdot a_i$$
 
 ### 1.3.5 Utility by Action
 
 Given that $k_{-i} = \sum_{j \neq i} a_j$ other volunteers are active:
 
 **If volunteer $i$ is active ($a_i = 1$):**
-$$U_i(1, \mathbf{a}_{-i}) = B \cdot P_{\text{det}}(k_{-i} + 1) - c$$
+$$U_i(1, \mathbf{a}_{-i}; c_i) = B \cdot P_{\text{det}}(k_{-i} + 1) - c_i$$
 
 **If volunteer $i$ is inactive ($a_i = 0$):**
-$$U_i(0, \mathbf{a}_{-i}) = B \cdot P_{\text{det}}(k_{-i})$$
+$$U_i(0, \mathbf{a}_{-i}; c_i) = B \cdot P_{\text{det}}(k_{-i})$$
 
 ### 1.3.6 Incentive to Participate
 
-**Definition:** The marginal utility of participation for volunteer $i$ is:
+**Definition:** The marginal utility of participation for volunteer $i$ with cost $c_i$ is:
 
-$$\Delta U_i(k_{-i}) = U_i(1, \mathbf{a}_{-i}) - U_i(0, \mathbf{a}_{-i})$$
+$$\Delta U_i(k_{-i}; c_i) = U_i(1, \mathbf{a}_{-i}; c_i) - U_i(0, \mathbf{a}_{-i}; c_i)$$
 
-$$\Delta U_i(k_{-i}) = B \cdot [P_{\text{det}}(k_{-i} + 1) - P_{\text{det}}(k_{-i})] - c$$
+$$\Delta U_i(k_{-i}; c_i) = B \cdot [P_{\text{det}}(k_{-i} + 1) - P_{\text{det}}(k_{-i})] - c_i$$
 
 **Lemma 3 (Marginal Detection Gain):**
 $$P_{\text{det}}(k+1) - P_{\text{det}}(k) = \rho(1-\rho)^k$$
 
-*Proof:*
+_Proof:_
 \begin{align}
-P_{\text{det}}(k+1) - P_{\text{det}}(k) &= [1-(1-\rho)^{k+1}] - [1-(1-\rho)^k] \\
+P*{\text{det}}(k+1) - P*{\text{det}}(k) &= [1-(1-\rho)^{k+1}] - [1-(1-\rho)^k] \\
 &= (1-\rho)^k - (1-\rho)^{k+1} \\
 &= (1-\rho)^k [1 - (1-\rho)] \\
 &= \rho(1-\rho)^k \quad \square
 \end{align}
 
 **Corollary:** The marginal utility of participation is:
-$$\Delta U_i(k_{-i}) = B\rho(1-\rho)^{k_{-i}} - c$$
+$$\Delta U_i(k_{-i}; c_i) = B\rho(1-\rho)^{k_{-i}} - c_i$$
+
+**Key Insight:** Volunteer $i$ prefers to participate if and only if:
+$$c_i \leq B\rho(1-\rho)^{k_{-i}}$$
+
+This defines a **cost threshold** below which participation is individually rational.
 
 ### 1.3.7 Key Parameters Summary
 
-| Parameter | Symbol | Description | Range |
-|-----------|--------|-------------|-------|
-| Area side | $L$ | Search region dimension | $L > 0$ |
-| Volunteers | $N$ | Total number of volunteers | $N \in \mathbb{N}^+$ |
-| Detection radius | $R$ | Beacon reception range | $0 < R < L$ |
-| Coverage ratio | $\rho$ | Single volunteer coverage | $\rho = \pi R^2/L^2$ |
-| Benefit | $B$ | Maximum benefit from detection | $B > 0$ |
-| Cost | $c$ | Participation cost | $c > 0$ |
+| Parameter         | Symbol     | Description                      | Range                               |
+| ----------------- | ---------- | -------------------------------- | ----------------------------------- |
+| Area side         | $L$        | Search region dimension          | $L > 0$                             |
+| Volunteers        | $N$        | Total number of volunteers       | $N \in \mathbb{N}^+$                |
+| Detection radius  | $R$        | Beacon reception range           | $0 < R < L$                         |
+| Coverage ratio    | $\rho$     | Single volunteer coverage        | $\rho = \pi R^2/L^2$                |
+| Benefit           | $B$        | Maximum benefit from detection   | $B > 0$                             |
+| Minimum cost      | $c_{\min}$ | Lower bound of cost distribution | $c_{\min} > 0$                      |
+| Maximum cost      | $c_{\max}$ | Upper bound of cost distribution | $c_{\max} \geq c_{\min}$            |
+| Cost distribution | $F$        | CDF of volunteer costs           | $F: [c_{\min}, c_{\max}] \to [0,1]$ |
 
 ### 1.3.8 Assumptions
 
-**A1 (Homogeneity):** All volunteers have identical detection capabilities and costs.
+**A1 (Independence):** Volunteer positions, costs, and decisions are mutually independent.
 
-**A2 (Independence):** Volunteer positions and decisions are independent.
+**A2 (Complete Information):** Parameters $(N, \rho, B, F)$ are common knowledge. Each volunteer knows their own cost $c_i$.
 
-**A3 (Complete Information):** All parameters $(N, \rho, B, c)$ are common knowledge.
+**A3 (Rationality):** Volunteers are rational utility maximizers.
 
-**A4 (Rationality):** Volunteers are rational utility maximizers.
+**A4 (No Coordination):** Volunteers cannot communicate or coordinate decisions.
 
-**A5 (No Coordination):** Volunteers cannot communicate or coordinate decisions.
+**A5 (Heterogeneous Costs):** Costs $c_i$ are drawn i.i.d. from distribution $F$ on $[c_{\min}, c_{\max}]$.
+
+**A6 (Log-Concavity):** The cost distribution $F$ is log-concave, i.e., $\log F(c)$ is concave on $[c_{\min}, c_{\max}]$.
+
+**Remark on A6:** Log-concavity is a mild regularity condition satisfied by most common distributions including: uniform, normal (and truncated normal), exponential (and truncated exponential), logistic, extreme value, and any distribution with log-concave density. It ensures uniqueness of equilibrium (Theorem 5 below).
 
 ---
 
-# PHASE 2: THEORETICAL ANALYSIS
+# PHASE 2: THEORETICAL ANALYSIS WITH HETEROGENEOUS COSTS
 
 ---
 
-## 2.1 Symmetric Nash Equilibrium
+## 2.1 Threshold Equilibrium Structure
 
-### 2.1.1 Symmetric Strategy Profile
+### 2.1.1 Threshold Strategy
 
-Given the symmetry of the game (identical players), we focus on symmetric Nash equilibria where all volunteers use the same strategy.
+The key insight for heterogeneous cost games is that equilibrium strategies have a **threshold structure**: there exists a cost threshold $\bar{c}$ such that volunteers participate if and only if their cost is below the threshold.
 
-**Definition (Symmetric Mixed Strategy):**
-A symmetric strategy is a probability $p \in [0, 1]$ where each volunteer independently chooses $a_i = 1$ with probability $p$.
+**Definition (Threshold Strategy):**
+A threshold strategy with cutoff $\bar{c} \in [c_{\min}, c_{\max}]$ is:
+$$a_i(\bar{c}; c_i) = \begin{cases} 1 & \text{if } c_i \leq \bar{c} \\ 0 & \text{if } c_i > \bar{c} \end{cases}$$
 
-**Definition (Symmetric Pure Strategy):**
-In a symmetric pure-strategy equilibrium, either all volunteers are active ($k = N$) or inactive ($k = 0$), or we have a mixed equilibrium.
+**Lemma 4 (Threshold Optimality):**
+In any Nash equilibrium, volunteer $i$'s best response is a threshold strategy.
 
-### 2.1.2 Expected Utility in Symmetric Profile
+_Proof:_
+Fix the actions of all other volunteers, resulting in $k_{-i}$ active volunteers. Volunteer $i$ prefers to participate iff:
+$$\Delta U_i(k_{-i}; c_i) = B\rho(1-\rho)^{k_{-i}} - c_i \geq 0$$
+$$\iff c_i \leq B\rho(1-\rho)^{k_{-i}}$$
 
-When all other $N-1$ volunteers play mixed strategy $p$, the number of other active volunteers follows a binomial distribution:
+Since this condition is monotone in $c_i$ (lower costs make participation more attractive), the best response is a threshold strategy. $\square$
 
-$$k_{-i} \sim \text{Binomial}(N-1, p)$$
+### 2.1.2 Expected Number of Active Volunteers
 
-**Expected utility if active:**
-$$\mathbb{E}[U_i(1)] = B \cdot \mathbb{E}[P_{\text{det}}(k_{-i} + 1)] - c$$
+When all volunteers use threshold $\bar{c}$, the expected number of active volunteers is:
+$$\mathbb{E}[k] = N \cdot \Pr(c_i \leq \bar{c}) = N \cdot F(\bar{c})$$
 
-**Expected utility if inactive:**
-$$\mathbb{E}[U_i(0)] = B \cdot \mathbb{E}[P_{\text{det}}(k_{-i})]$$
+For large $N$, by the law of large numbers:
+$$k \approx N \cdot F(\bar{c})$$
 
-### 2.1.3 Pure Strategy Nash Equilibrium
+In the analysis, we work with the deterministic approximation $k = N \cdot F(\bar{c})$, which becomes exact as $N \to \infty$.
 
-For tractability, we first analyze the case where exactly $k^*$ volunteers are active (symmetric in expectation but possibly with randomization over which $k^*$ are active).
+### 2.1.3 Equilibrium Threshold
 
-**Theorem 2 (Pure Strategy NE Characterization):**
-A symmetric configuration with $k^*$ active volunteers is a Nash equilibrium if and only if:
-
-1. **No active volunteer wants to deviate to inactive:**
-$$U_i(1; k^*) \geq U_i(0; k^* - 1)$$
-$$B \cdot P_{\text{det}}(k^*) - c \geq B \cdot P_{\text{det}}(k^* - 1)$$
-
-2. **No inactive volunteer wants to deviate to active:**
-$$U_i(0; k^*) \geq U_i(1; k^* + 1)$$
-$$B \cdot P_{\text{det}}(k^*) \geq B \cdot P_{\text{det}}(k^* + 1) - c$$
-
-*Rearranging:*
-
-**Condition 1:** $B[P_{\text{det}}(k^*) - P_{\text{det}}(k^*-1)] \geq c$
-$$B\rho(1-\rho)^{k^*-1} \geq c$$
-
-**Condition 2:** $B[P_{\text{det}}(k^*+1) - P_{\text{det}}(k^*)] \leq c$
-$$B\rho(1-\rho)^{k^*} \leq c$$
-
-### 2.1.4 Equilibrium Characterization
-
-**Theorem 3 (Nash Equilibrium):**
-Define the threshold function:
+**Definition (Equilibrium Threshold Function):**
+Define the marginal benefit function:
 $$\phi(k) = B\rho(1-\rho)^{k-1}$$
 
-The Nash equilibrium number of active volunteers $k^*$ satisfies:
-$$\phi(k^* + 1) \leq c \leq \phi(k^*)$$
+This is the marginal benefit of detection when $k-1$ others are active, i.e., the benefit a volunteer provides by becoming the $k$-th active participant.
 
-Equivalently:
-$$k^* = \left\lfloor 1 + \frac{\ln(c) - \ln(B\rho)}{\ln(1-\rho)} \right\rfloor$$
+**Properties of $\phi(k)$:**
 
-when $c \leq B\rho$ (otherwise $k^* = 0$).
+1. $\phi(1) = B\rho$ (maximum, when no one else is active)
+2. $\phi(k)$ is strictly decreasing in $k$
+3. $\lim_{k \to \infty} \phi(k) = 0$
+4. $\phi(k+1) = (1-\rho) \cdot \phi(k)$
 
-*Proof:*
-From conditions 1 and 2:
-$$B\rho(1-\rho)^{k^*} \leq c \leq B\rho(1-\rho)^{k^*-1}$$
+**Theorem 2 (Equilibrium Threshold Characterization):**
+At a Nash equilibrium, the cost threshold $\bar{c}^*$ satisfies the fixed-point equation:
+$$\bar{c}^* = \phi(k^* + 1) = B\rho(1-\rho)^{k^*}$$
 
-Taking logarithms:
-$$\ln(B\rho) + k^* \ln(1-\rho) \leq \ln(c) \leq \ln(B\rho) + (k^*-1)\ln(1-\rho)$$
+where $k^* = N \cdot F(\bar{c}^*)$ is the equilibrium number of active volunteers.
 
-Since $\ln(1-\rho) < 0$:
-$$k^* \geq \frac{\ln(c) - \ln(B\rho)}{\ln(1-\rho)} \geq k^* - 1$$
+_Proof:_
+At equilibrium:
 
-Thus:
-$$k^* = \left\lfloor 1 + \frac{\ln(c/B\rho)}{\ln(1-\rho)} \right\rfloor = \left\lfloor 1 - \frac{\ln(c/B\rho)}{\ln(1/(1-\rho))} \right\rfloor \quad \square$$
+- A volunteer with $c_i = \bar{c}^*$ must be indifferent between participating and not
+- If they participate, they become the $(k^*+1)$-th volunteer (among active ones, since they're marginal)
+- Indifference requires: $B\rho(1-\rho)^{k^*} = \bar{c}^*$
 
-### 2.1.5 Special Cases
+More precisely, if $k^*$ volunteers with $c_i < \bar{c}^*$ are active, a marginal volunteer with cost exactly $\bar{c}^*$ faces $k_{-i} = k^*$ others and must be indifferent:
+$$B\rho(1-\rho)^{k^*} = \bar{c}^* \quad \square$$
 
-**Case 1: Low Cost ($c \leq B\rho(1-\rho)^{N-1}$)**
-All volunteers active: $k^* = N$
+**Corollary (Fixed-Point Equation for $k^*$):**
+The equilibrium number of active volunteers satisfies:
+$$k^* = N \cdot F\left(B\rho(1-\rho)^{k^*}\right)$$
 
-**Case 2: High Cost ($c > B\rho$)**
-No volunteers active: $k^* = 0$
+Define $\Psi(k) = N \cdot F\left(B\rho(1-\rho)^{k}\right)$. Then $k^*$ is a fixed point of $\Psi$.
 
-**Case 3: Intermediate Cost**
-Interior equilibrium: $1 \leq k^* \leq N-1$
+### 2.1.4 Existence of Equilibrium
 
-### 2.1.6 Mixed Strategy Equilibrium
+**Theorem 3 (Existence):**
+A Nash equilibrium exists.
 
-**Theorem 4 (Mixed Strategy NE):**
-In a symmetric mixed-strategy equilibrium with participation probability $p^* \in (0, 1)$, volunteers must be indifferent between actions:
+_Proof:_
+We show $\Psi(k) = N \cdot F(B\rho(1-\rho)^k)$ has a fixed point on $[0, N]$.
 
-$$\mathbb{E}[U_i(1)] = \mathbb{E}[U_i(0)]$$
+1. $\Psi$ is continuous (composition of continuous functions)
+2. $\Psi(0) = N \cdot F(B\rho) \geq 0$
+3. $\Psi(N) = N \cdot F(B\rho(1-\rho)^N) \leq N$
 
-This yields the indifference condition:
-$$B \cdot \mathbb{E}[P_{\text{det}}(k_{-i} + 1) - P_{\text{det}}(k_{-i})] = c$$
+If $\Psi(0) \leq 0$, then $k^* = 0$ is a fixed point.
+If $\Psi(N) \geq N$, then $k^* = N$ is a fixed point.
+Otherwise, by the Intermediate Value Theorem, there exists $k^* \in (0, N)$ with $\Psi(k^*) = k^*$. $\square$
 
-$$B\rho \cdot \mathbb{E}[(1-\rho)^{k_{-i}}] = c$$
+### 2.1.5 Uniqueness of Equilibrium
 
-Since $k_{-i} \sim \text{Binomial}(N-1, p)$:
-$$\mathbb{E}[(1-\rho)^{k_{-i}}] = \sum_{j=0}^{N-1} \binom{N-1}{j} p^j (1-p)^{N-1-j} (1-\rho)^j$$
-$$= [p(1-\rho) + (1-p)]^{N-1} = [1 - p\rho]^{N-1}$$
+**Theorem 4 (Uniqueness under Log-Concavity):**
+If $F$ is log-concave, the Nash equilibrium is unique.
 
-**Equilibrium condition:**
-$$B\rho[1 - p^*\rho]^{N-1} = c$$
+_Proof:_
+We show $\Psi(k)$ crosses the 45° line exactly once.
 
-**Solving for $p^*$:**
-$$p^* = \frac{1}{\rho}\left[1 - \left(\frac{c}{B\rho}\right)^{\frac{1}{N-1}}\right]$$
+Compute the derivative:
+$$\Psi'(k) = N \cdot f(B\rho(1-\rho)^k) \cdot B\rho(1-\rho)^k \cdot \ln(1-\rho)$$
 
-**Validity:** $p^* \in (0, 1)$ requires:
-$$B\rho(1-\rho)^{N-1} < c < B\rho$$
+Since $\ln(1-\rho) < 0$, we have $\Psi'(k) < 0$ whenever $f > 0$, so $\Psi$ is strictly decreasing.
+
+A strictly decreasing function can cross the identity line at most once. Combined with existence (Theorem 3), uniqueness follows. $\square$
+
+**Remark:** Without log-concavity, multiple equilibria may exist. For example, a bimodal cost distribution could yield both a "low participation" and "high participation" equilibrium.
+
+### 2.1.6 Computing the Equilibrium
+
+**Algorithm 1 (Fixed-Point Iteration):**
+
+```
+Input: N, ρ, B, F
+Initialize: k₀ = N/2
+For t = 0, 1, 2, ...:
+    c̄_t = Bρ(1-ρ)^(k_t)
+    k_{t+1} = N · F(c̄_t)
+    If |k_{t+1} - k_t| < ε: break
+Output: k* = k_{t+1}, c̄* = c̄_t
+```
+
+**Theorem 5 (Convergence):**
+Under log-concavity, Algorithm 1 converges to the unique equilibrium.
+
+_Proof:_
+The iteration $k_{t+1} = \Psi(k_t)$ is a contraction mapping when $|\Psi'(k)| < 1$ in a neighborhood of $k^*$. Log-concavity ensures $\Psi$ is strictly decreasing, and for typical parameters, $|\Psi'(k^*)| < 1$. $\square$
 
 ---
 
-## 2.2 Social Optimum
+## 2.2 Explicit Solution for Uniform Distribution
 
-### 2.2.1 Social Welfare Function
+### 2.2.1 Setup
 
-**Definition:** The social welfare with $k$ active volunteers is the sum of all utilities:
+Let $c_i \sim \text{Uniform}[c_{\min}, c_{\max}]$. Then:
+$$F(c) = \frac{c - c_{\min}}{c_{\max} - c_{\min}}, \quad c \in [c_{\min}, c_{\max}]$$
 
-$$W(k) = \sum_{i=1}^{N} U_i = N \cdot B \cdot P_{\text{det}}(k) - k \cdot c$$
+Define the cost spread:
+$$\Delta_c = c_{\max} - c_{\min}$$
 
-Note: All volunteers receive the same benefit $B \cdot P_{\text{det}}(k)$, but only $k$ pay the cost.
+### 2.2.2 Fixed-Point Equation
 
-### 2.2.2 Welfare Maximization
+The equilibrium condition becomes:
+$$k^* = N \cdot \frac{B\rho(1-\rho)^{k^*} - c_{\min}}{\Delta_c}$$
 
-**Theorem 5 (Social Optimum):**
-The socially optimal number of active volunteers is:
+provided $\bar{c}^* = B\rho(1-\rho)^{k^*} \in [c_{\min}, c_{\max}]$.
 
-$$k^{\text{opt}} = \arg\max_{k \in \{0, 1, \ldots, N\}} W(k)$$
+**Rearranging:**
+$$k^* \cdot \Delta_c = N \cdot B\rho(1-\rho)^{k^*} - N \cdot c_{\min}$$
 
-The first-order condition (treating $k$ as continuous) is:
-$$\frac{dW}{dk} = NB \cdot \frac{dP_{\text{det}}}{dk} - c = 0$$
+Let $\alpha = (1-\rho)$ and $\beta = NB\rho$. Then:
+$$k^* \cdot \Delta_c + N \cdot c_{\min} = \beta \cdot \alpha^{k^*}$$
 
-$$NB\rho(1-\rho)^{k-1} \cdot (-\ln(1-\rho)) = c$$
+### 2.2.3 Closed-Form Approximation
 
-Wait, let me recalculate. We have:
-$$\frac{dP_{\text{det}}}{dk} = \frac{d}{dk}[1 - (1-\rho)^k] = -(1-\rho)^k \ln(1-\rho) = (1-\rho)^k \ln\frac{1}{1-\rho}$$
+For small $\rho$ and moderate $k^*$, we use $\ln(\alpha) = \ln(1-\rho) \approx -\rho$.
 
-So:
-$$NB(1-\rho)^k \ln\frac{1}{1-\rho} = c$$
+Taking logs of the fixed-point equation:
+$$\ln(k^* \Delta_c + N c_{\min}) = \ln(\beta) + k^* \ln(\alpha)$$
 
-For the discrete case, the optimum satisfies:
-$$W(k^{\text{opt}}) \geq W(k^{\text{opt}} - 1) \quad \text{and} \quad W(k^{\text{opt}}) \geq W(k^{\text{opt}} + 1)$$
+Let $\gamma = \ln(\beta) = \ln(NB\rho)$ and $\lambda = -\ln(\alpha) \approx \rho$.
 
-**Condition for increasing welfare:**
-$$W(k) - W(k-1) = NB[P_{\text{det}}(k) - P_{\text{det}}(k-1)] - c \geq 0$$
-$$NB\rho(1-\rho)^{k-1} \geq c$$
+$$\ln(k^* \Delta_c + N c_{\min}) = \gamma - \lambda k^*$$
 
-**Theorem 6 (Social Optimum Characterization):**
-$$k^{\text{opt}} = \left\lfloor 1 + \frac{\ln(c) - \ln(NB\rho)}{\ln(1-\rho)} \right\rfloor$$
+This is a transcendental equation. For a first-order approximation, assume $k^* \Delta_c \ll N c_{\min}$ (heterogeneity is small):
 
-when $c \leq NB\rho$.
+$$k^* \approx \frac{\gamma - \ln(N c_{\min})}{\lambda} = \frac{\ln(NB\rho) - \ln(N c_{\min})}{\rho} = \frac{\ln(B\rho / c_{\min})}{\rho}$$
 
-### 2.2.3 Comparison: NE vs Social Optimum
+**Theorem 6 (Approximate Equilibrium for Uniform Distribution):**
+For uniform costs on $[c_{\min}, c_{\max}]$ with small heterogeneity ($\Delta_c \ll c_{\min}$):
 
-**Key Observation:**
-- NE condition: $B\rho(1-\rho)^{k^*-1} \geq c$
-- Social optimum condition: $NB\rho(1-\rho)^{k^{\text{opt}}-1} \geq c$
+$$k^* \approx \frac{1}{\rho} \ln\left(\frac{B\rho}{c_{\min}}\right) + O\left(\frac{\Delta_c}{c_{\min}}\right)$$
 
-The factor of $N$ difference implies:
+### 2.2.4 Special Cases
 
-**Theorem 7 (Under-Participation):**
+**Case 1: Homogeneous Costs ($c_{\min} = c_{\max} = c$)**
+$$k^* = \left\lfloor 1 + \frac{\ln(c/B\rho)}{\ln(1-\rho)} \right\rfloor$$
+
+This recovers the original formula from the homogeneous model.
+
+**Case 2: Full Support ($c_{\min} \to 0$)**
+$$k^* \to N \quad \text{(all volunteers participate)}$$
+
+When some volunteers have near-zero costs, they always participate.
+
+**Case 3: High Minimum Cost ($c_{\min} > B\rho$)**
+$$k^* = 0 \quad \text{(no participation)}$$
+
+When even the lowest-cost volunteers find participation unprofitable.
+
+---
+
+## 2.3 Social Optimum with Heterogeneous Costs
+
+### 2.3.1 Social Welfare Function
+
+**Definition:** Given a set $S \subseteq \mathcal{N}$ of active volunteers with costs $(c_i)_{i \in S}$, the social welfare is:
+
+$$W(S) = N \cdot B \cdot P_{\text{det}}(|S|) - \sum_{i \in S} c_i$$
+
+Note: All $N$ volunteers receive the benefit $B \cdot P_{\text{det}}(|S|)$, but only those in $S$ pay their costs.
+
+### 2.3.2 Optimal Selection Rule
+
+**Theorem 7 (Optimal Selection by Cost):**
+The socially optimal set $S^{\text{opt}}$ consists of the volunteers with the lowest costs.
+
+_Proof:_
+Suppose $S^{\text{opt}}$ contains volunteer $j$ but not volunteer $i$ with $c_i < c_j$. Consider swapping: remove $j$, add $i$.
+
+The detection probability is unchanged (both sets have the same size), but the cost decreases by $c_j - c_i > 0$. This contradicts optimality. $\square$
+
+**Corollary:** Let $c_{(1)} \leq c_{(2)} \leq \cdots \leq c_{(N)}$ be the order statistics of costs. Then:
+$$S^{\text{opt}} = \{(1), (2), \ldots, (k^{\text{opt}})\}$$
+
+for some $k^{\text{opt}} \in \{0, 1, \ldots, N\}$.
+
+### 2.3.3 Optimal Number of Volunteers
+
+**Theorem 8 (Social Optimum Characterization):**
+The optimal number of active volunteers $k^{\text{opt}}$ satisfies:
+
+$$NB\rho(1-\rho)^{k^{\text{opt}}-1} \geq c_{(k^{\text{opt}})} \quad \text{and} \quad NB\rho(1-\rho)^{k^{\text{opt}}} < c_{(k^{\text{opt}}+1)}$$
+
+where $c_{(k)}$ is the $k$-th lowest cost.
+
+_Proof:_
+The marginal welfare of adding the $k$-th volunteer (with cost $c_{(k)}$) is:
+$$W(k) - W(k-1) = NB[P_{\text{det}}(k) - P_{\text{det}}(k-1)] - c_{(k)} = NB\rho(1-\rho)^{k-1} - c_{(k)}$$
+
+Adding volunteer $k$ is beneficial iff $NB\rho(1-\rho)^{k-1} \geq c_{(k)}$.
+
+The optimum is the largest $k$ for which this holds. $\square$
+
+### 2.3.4 Expected Social Optimum
+
+When costs are drawn from $F$, the expected $k$-th order statistic is:
+$$\mathbb{E}[c_{(k)}] = \int_0^1 F^{-1}(u) \cdot f_{U_{(k)}}(u) \, du$$
+
+where $f_{U_{(k)}}$ is the density of the $k$-th order statistic of $N$ uniform random variables.
+
+For large $N$, the $k$-th order statistic concentrates around:
+$$c_{(k)} \approx F^{-1}(k/N)$$
+
+**Theorem 9 (Expected Social Optimum):**
+For large $N$, the expected socially optimal participation is approximately:
+$$k^{\text{opt}} \approx N \cdot F\left(NB\rho(1-\rho)^{k^{\text{opt}}-1}\right)$$
+
+with the fixed-point:
+$$k^{\text{opt}} = N \cdot F(\bar{c}^{\text{opt}})$$
+$$\bar{c}^{\text{opt}} = NB\rho(1-\rho)^{k^{\text{opt}}-1}$$
+
+### 2.3.5 Comparison with Nash Equilibrium
+
+**Key Difference:**
+
+- Nash threshold: $\bar{c}^* = B\rho(1-\rho)^{k^*}$
+- Social threshold: $\bar{c}^{\text{opt}} = NB\rho(1-\rho)^{k^{\text{opt}}-1}$
+
+The factor of $N$ in the social threshold (reflecting the externality on all $N$ users) leads to a higher threshold and thus more participation.
+
+**Theorem 10 (Under-Participation):**
 $$k^* \leq k^{\text{opt}}$$
 
-The Nash equilibrium exhibits under-participation relative to the social optimum.
+with strict inequality unless $k^* = N$ or $k^* = 0$.
 
-*Proof:*
-The threshold for individual participation is $B\rho(1-\rho)^{k-1} \geq c$.
-The threshold for social benefit is $NB\rho(1-\rho)^{k-1} \geq c$.
+_Proof:_
+At Nash equilibrium, the marginal participant has cost $\bar{c}^* = B\rho(1-\rho)^{k^*}$.
 
-Since $N \geq 1$, the social threshold is easier to satisfy, meaning more volunteers should be active at the social optimum. $\square$
+For social optimality at $k^*$, we need:
+$$NB\rho(1-\rho)^{k^*-1} \geq c_{(k^*)}$$
 
-**Intuition:** Each volunteer only considers their private benefit from participation, ignoring the positive externality they create for all $N-1$ other volunteers.
+Since the marginal Nash participant has cost $\bar{c}^*$, the $k^*$-th lowest cost satisfies $c_{(k^*)} \leq \bar{c}^*$ (approximately, for large $N$).
 
-### 2.2.4 Participation Gap
+But $NB\rho(1-\rho)^{k^*-1} = N \cdot (1-\rho)^{-1} \cdot \bar{c}^* > \bar{c}^* \geq c_{(k^*)}$
 
-**Definition:** The participation gap is:
+So adding more volunteers beyond $k^*$ remains socially beneficial. $\square$
+
+---
+
+## 2.4 Participation Gap
+
+### 2.4.1 Definition
+
+**Definition (Participation Gap):**
 $$\Delta k = k^{\text{opt}} - k^*$$
 
-**Theorem 8:**
-$$\Delta k = \left\lfloor \frac{\ln N}{\ln(1/(1-\rho))} \right\rfloor = \left\lfloor \frac{\ln N}{-\ln(1-\rho)} \right\rfloor$$
+This measures the extent of under-participation due to externalities.
 
-*Proof:*
-From the equilibrium characterizations:
-$$k^{\text{opt}} - k^* \approx \frac{\ln(NB\rho) - \ln(c)}{\ln(1/(1-\rho))} - \frac{\ln(B\rho) - \ln(c)}{\ln(1/(1-\rho))} = \frac{\ln N}{\ln(1/(1-\rho))} \quad \square$$
+### 2.4.2 Gap Characterization for Uniform Distribution
 
-**Corollary:** For small $\rho$, using $\ln(1/(1-\rho)) \approx \rho$:
-$$\Delta k \approx \frac{\ln N}{\rho}$$
+**Theorem 11 (Participation Gap - Uniform Costs):**
+For uniform costs on $[c_{\min}, c_{\max}]$:
 
-The participation gap increases with $N$ and decreases with coverage ratio $\rho$.
+$$\Delta k \approx \frac{\ln N}{-\ln(1-\rho)} \approx \frac{\ln N}{\rho}$$
+
+for small $\rho$.
+
+_Proof:_
+From the threshold conditions:
+
+- Nash: $\bar{c}^* = B\rho(1-\rho)^{k^*}$
+- Social: $\bar{c}^{\text{opt}} = NB\rho(1-\rho)^{k^{\text{opt}}-1}$
+
+At interior equilibria where both thresholds lie in $[c_{\min}, c_{\max}]$:
+
+Taking logs:
+$$\ln(\bar{c}^*) = \ln(B\rho) + k^* \ln(1-\rho)$$
+$$\ln(\bar{c}^{\text{opt}}) = \ln(NB\rho) + (k^{\text{opt}}-1) \ln(1-\rho)$$
+
+The difference in thresholds reflects:
+$$\ln(\bar{c}^{\text{opt}}) - \ln(\bar{c}^*) = \ln N + (k^{\text{opt}} - k^* - 1)\ln(1-\rho)$$
+
+For uniform distribution with $\bar{c}^{\text{opt}}, \bar{c}^* \in [c_{\min}, c_{\max}]$:
+$$k^{\text{opt}} - k^* = \frac{N(F(\bar{c}^{\text{opt}}) - F(\bar{c}^*))}{\Delta_c/\Delta_c} = N \cdot \frac{\bar{c}^{\text{opt}} - \bar{c}^*}{\Delta_c}$$
+
+After algebraic manipulation (similar to homogeneous case):
+$$\Delta k \approx \frac{\ln N}{-\ln(1-\rho)} \quad \square$$
+
+### 2.4.3 Effect of Heterogeneity on Gap
+
+**Theorem 12 (Gap Amplification):**
+For fixed mean cost $\bar{c} = (c_{\min} + c_{\max})/2$, increasing the spread $\Delta_c = c_{\max} - c_{\min}$ can either increase or decrease the gap, depending on parameter regime.
+
+_Intuition:_
+
+- More heterogeneity means more low-cost volunteers → potentially higher $k^*$
+- But also more high-cost volunteers who never participate
+- The net effect depends on where the thresholds $\bar{c}^*, \bar{c}^{\text{opt}}$ fall
+
+**Proposition 1 (Gap Bounds):**
+$$0 \leq \Delta k \leq N - k^*$$
+
+The gap is bounded by the number of inactive volunteers at Nash equilibrium.
 
 ---
 
-## 2.3 Price of Anarchy
+## 2.5 Price of Anarchy
 
-### 2.3.1 Definition
+### 2.5.1 Definition
 
 **Definition (Price of Anarchy):**
-$$\text{PoA} = \frac{W(k^{\text{opt}})}{W(k^*)}$$
+$$\text{PoA} = \frac{W(S^{\text{opt}})}{W(S^*)}$$
 
-The PoA measures the efficiency loss due to selfish behavior.
+where $S^*$ is the Nash equilibrium set and $S^{\text{opt}}$ is the socially optimal set.
 
-**Definition (Price of Stability):**
-If multiple equilibria exist:
-$$\text{PoS} = \frac{W(k^{\text{opt}})}{\max_{\text{NE } k} W(k)}$$
+### 2.5.2 PoA with Heterogeneous Costs
 
-### 2.3.2 PoA Computation
+**Theorem 13 (PoA Characterization):**
+$$\text{PoA} = \frac{NB[1-(1-\rho)^{k^{\text{opt}}}] - \sum_{j=1}^{k^{\text{opt}}} c_{(j)}}{NB[1-(1-\rho)^{k^*}] - \sum_{j=1}^{k^*} c_{(j)}}$$
 
-**Theorem 9 (Price of Anarchy Bound):**
+### 2.5.3 Expected PoA for Uniform Costs
 
-$$\text{PoA} = \frac{NB \cdot P_{\text{det}}(k^{\text{opt}}) - k^{\text{opt}} \cdot c}{NB \cdot P_{\text{det}}(k^*) - k^* \cdot c}$$
+For uniform distribution on $[c_{\min}, c_{\max}]$, the expected sum of the $k$ lowest costs is:
+$$\mathbb{E}\left[\sum_{j=1}^{k} c_{(j)}\right] = k \cdot c_{\min} + \frac{k(k+1)}{2(N+1)} \cdot \Delta_c$$
 
-**Upper Bound:**
+**Theorem 14 (Expected PoA - Uniform):**
+For large $N$ with uniform costs:
 
-For the worst case where $k^* = 0$ (no participation):
-$$\text{PoA} = \frac{W(k^{\text{opt}})}{W(0)} = \frac{NB \cdot P_{\text{det}}(k^{\text{opt}}) - k^{\text{opt}} \cdot c}{0}$$
+$$\text{PoA} \approx \frac{NB \cdot P_{\text{det}}(k^{\text{opt}}) - k^{\text{opt}} \cdot \bar{c}^{\text{opt}}/2}{NB \cdot P_{\text{det}}(k^*) - k^* \cdot \bar{c}^*/2}$$
 
-This is unbounded, occurring when $c > B\rho$.
+where the factor of $1/2$ arises from the uniform distribution's mean below the threshold.
 
-**Interior Case Analysis:**
+### 2.5.4 Critical Regime
 
-When $k^* \geq 1$:
+**Definition (Critical Cost Regime):**
+The critical regime occurs when:
+$$c_{\min} \leq B\rho \leq c_{\max}$$
 
-$$\text{PoA} = \frac{NB[1-(1-\rho)^{k^{\text{opt}}}] - k^{\text{opt}} c}{NB[1-(1-\rho)^{k^*}] - k^* c}$$
+In this regime, some but not all volunteers find participation individually rational even when alone.
 
-### 2.3.3 Asymptotic Analysis
+**Theorem 15 (PoA Divergence):**
+As $c_{\min} \to B\rho$ from below, $k^* \to 0$ while $k^{\text{opt}}$ may remain positive, causing:
+$$\text{PoA} \to +\infty$$
 
-**Theorem 10 (Large N Behavior):**
-As $N \to \infty$ with fixed $\rho$ and $c/B$:
+_Proof:_
+When $\bar{c}^* = B\rho(1-\rho)^{k^*} < c_{\min}$ for all $k^* \geq 1$, we have $k^* = 0$ and $W(S^*) = 0$.
 
-$$\text{PoA} \to \frac{NB - k^{\text{opt}} c}{NB - k^* c} \approx 1 + \frac{(k^{\text{opt}} - k^*)c}{NB - k^* c}$$
+But if $NB\rho > c_{\min}$, then $k^{\text{opt}} \geq 1$ and $W(S^{\text{opt}}) > 0$.
 
-For large $N$ with both $k^{\text{opt}}$ and $k^*$ scaling as $O(\ln N / \rho)$:
-$$\text{PoA} = 1 + O\left(\frac{\ln N}{N}\right) \to 1$$
+Thus PoA = $W(S^{\text{opt}})/0 = +\infty$. $\square$
 
-**Interpretation:** For large populations, the inefficiency becomes negligible because the social benefit dominates the cost differences.
+**Remark:** The critical regime is where platform intervention (incentives) is most valuable.
 
-### 2.3.4 Numerical PoA Characterization
+### 2.5.5 PoA vs. Heterogeneity
 
-**Proposition 1:** For moderate parameters ($N = 100$, $\rho = 0.01$, $c/B \in [0.001, 0.1]$):
-$$\text{PoA} \in [1, 1.5]$$
+**Proposition 2 (Heterogeneity Effect on PoA):**
+For fixed mean cost, increasing heterogeneity (larger $\Delta_c$) generally increases PoA because:
 
-The PoA is bounded and modest for typical parameter ranges.
+1. Low-cost volunteers participate anyway (small gain)
+2. High-cost volunteers who should participate (socially) don't (large loss)
+
+This suggests heterogeneous populations benefit more from incentive mechanisms.
 
 ---
 
-## 2.4 Stackelberg Extension
+## 2.6 Stackelberg Game with Platform Incentives
 
-### 2.4.1 Stackelberg Game Formulation
+### 2.6.1 Setup
 
-We extend the model to a two-stage Stackelberg game:
+We extend to a two-stage Stackelberg game:
 
-**Leader (Platform/Coordinator):**
+**Stage 1 - Leader (Platform):**
+
 - Announces an incentive payment $p \geq 0$ per active volunteer
-- Objective: Maximize social welfare minus incentive costs
+- Knows the distribution $F$ but not individual costs $c_i$
 
-**Followers (Volunteers):**
-- Observe incentive $p$ and decide participation
-- Modified utility: $U_i^p(\mathbf{a}) = B \cdot P_{\text{det}}(k) - c \cdot a_i + p \cdot a_i$
+**Stage 2 - Followers (Volunteers):**
 
-### 2.4.2 Volunteer Response
+- Observe incentive $p$
+- Decide participation based on modified utility:
+  $$U_i^p(a_i; c_i) = B \cdot P_{\text{det}}(k) - (c_i - p) \cdot a_i$$
 
-**Modified Utility:**
-$$U_i^p(1; k) = B \cdot P_{\text{det}}(k) - c + p = B \cdot P_{\text{det}}(k) - (c - p)$$
-$$U_i^p(0; k) = B \cdot P_{\text{det}}(k)$$
+The incentive effectively reduces each volunteer's cost to $(c_i - p)$.
 
-The incentive effectively reduces the participation cost to $(c - p)$.
+### 2.6.2 Induced Equilibrium
 
-**Lemma 4 (Induced Equilibrium):**
-Given incentive $p$, the Nash equilibrium participation $k^*(p)$ satisfies:
-$$k^*(p) = \left\lfloor 1 + \frac{\ln(c-p) - \ln(B\rho)}{\ln(1-\rho)} \right\rfloor$$
+**Lemma 5 (Induced Threshold):**
+Given incentive $p$, the Nash equilibrium threshold becomes:
+$$\bar{c}^*(p) = B\rho(1-\rho)^{k^*(p)} + p$$
 
-for $p < c$ and $c - p \leq B\rho$.
+And the equilibrium participation:
+$$k^*(p) = N \cdot F(\bar{c}^*(p))$$
 
-### 2.4.3 Platform Objective
+_Proof:_
+A volunteer participates iff:
+$$c_i - p \leq B\rho(1-\rho)^{k_{-i}}$$
+$$c_i \leq B\rho(1-\rho)^{k_{-i}} + p = \bar{c}^*(p)$$
 
-The platform's utility is social welfare minus total incentive payments:
-$$V(p) = W(k^*(p)) - p \cdot k^*(p)$$
-$$V(p) = NB \cdot P_{\text{det}}(k^*(p)) - k^*(p) \cdot c$$
+The rest follows from the standard threshold equilibrium analysis. $\square$
 
-Note: The incentive payments cancel out (transfer from platform to volunteers).
+### 2.6.3 Optimal Incentive to Implement Social Optimum
 
-**Alternative Objective (Budget-Constrained):**
+**Theorem 16 (Optimal Stackelberg Incentive):**
+To induce $k^{\text{opt}}$ active volunteers, the platform should set:
+$$p^* = \bar{c}^{\text{opt}} - B\rho(1-\rho)^{k^{\text{opt}}}$$
+
+where $\bar{c}^{\text{opt}} = F^{-1}(k^{\text{opt}}/N)$.
+
+_Proof:_
+We need the threshold with incentive $p^*$ to equal the social optimal threshold:
+$$\bar{c}^*(p^*) = \bar{c}^{\text{opt}}$$
+$$B\rho(1-\rho)^{k^{\text{opt}}} + p^* = \bar{c}^{\text{opt}}$$
+$$p^* = \bar{c}^{\text{opt}} - B\rho(1-\rho)^{k^{\text{opt}}} \quad \square$$
+
+### 2.6.4 Incentive for Uniform Distribution
+
+**Corollary (Uniform Distribution):**
+For uniform costs on $[c_{\min}, c_{\max}]$:
+$$\bar{c}^{\text{opt}} = c_{\min} + \frac{k^{\text{opt}}}{N} \cdot \Delta_c$$
+
+$$p^* = c_{\min} + \frac{k^{\text{opt}}}{N} \cdot \Delta_c - B\rho(1-\rho)^{k^{\text{opt}}}$$
+
+### 2.6.5 Total Incentive Budget
+
+**Definition:** The total incentive payment is:
+$$\mathcal{I}^* = p^* \cdot k^{\text{opt}}$$
+
+**Theorem 17 (Budget Characterization):**
+$$\mathcal{I}^* = k^{\text{opt}} \cdot \left[\bar{c}^{\text{opt}} - B\rho(1-\rho)^{k^{\text{opt}}}\right]$$
+
+For large $N$ and the critical regime:
+$$\mathcal{I}^* \approx k^{\text{opt}} \cdot (\bar{c}^{\text{opt}} - \bar{c}^*)$$
+
+The budget scales with both the number of volunteers needed and the gap between social and private thresholds.
+
+### 2.6.6 Budget-Constrained Mechanism
+
+**Alternative Problem:** If the platform has budget $\mathcal{B}$:
 $$\max_{p \geq 0} W(k^*(p)) \quad \text{s.t.} \quad p \cdot k^*(p) \leq \mathcal{B}$$
 
-where $\mathcal{B}$ is the platform's budget.
+**Theorem 18 (Budget-Constrained Optimum):**
+The budget-constrained optimal incentive satisfies:
+$$p^{\mathcal{B}} = \min\{p^*, \mathcal{B}/k^*(p^{\mathcal{B}})\}$$
 
-### 2.4.4 Optimal Incentive
+When budget is insufficient ($\mathcal{B} < \mathcal{I}^*$), the platform implements a second-best outcome with $k^{\mathcal{B}} < k^{\text{opt}}$.
 
-**Theorem 11 (Optimal Stackelberg Incentive):**
-To implement the social optimum $k^{\text{opt}}$, the platform should set:
+---
 
-$$p^* = c - B\rho(1-\rho)^{k^{\text{opt}}-1}$$
+## 2.7 Comparison: Homogeneous vs. Heterogeneous
 
-*Proof:*
-We need volunteers to find it optimal to participate when $k = k^{\text{opt}}$:
-$$B\rho(1-\rho)^{k^{\text{opt}}-1} \geq c - p^*$$
+### 2.7.1 Summary Table
 
-Setting equality:
-$$p^* = c - B\rho(1-\rho)^{k^{\text{opt}}-1}$$
+| Quantity              | Homogeneous                                                              | Heterogeneous                                                          |
+| --------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| Cost                  | $c$ (constant)                                                           | $c_i \sim F[c_{\min}, c_{\max}]$                                       |
+| Nash equilibrium      | $k^* = \lfloor 1 + \frac{\ln(c/B\rho)}{\ln(1-\rho)} \rfloor$             | $k^* = N \cdot F(B\rho(1-\rho)^{k^*})$ (fixed point)                   |
+| Social optimum        | $k^{\text{opt}} = \lfloor 1 + \frac{\ln(c/NB\rho)}{\ln(1-\rho)} \rfloor$ | $k^{\text{opt}}$: largest $k$ with $NB\rho(1-\rho)^{k-1} \geq c_{(k)}$ |
+| Participation gap     | $\Delta k \approx \frac{\ln N}{\rho}$                                    | $\Delta k \approx \frac{\ln N}{\rho}$ (similar scaling)                |
+| Optimal incentive     | $p^* = c - B\rho(1-\rho)^{k^{\text{opt}}-1}$                             | $p^* = \bar{c}^{\text{opt}} - B\rho(1-\rho)^{k^{\text{opt}}}$          |
+| Equilibrium structure | $k^*$ volunteers, any selection                                          | Threshold: lowest-cost $k^*$ participate                               |
 
-This makes the $k^{\text{opt}}$-th volunteer exactly indifferent, inducing equilibrium at $k^{\text{opt}}$. $\square$
+### 2.7.2 Key Insights
 
-**Corollary (Incentive Characterization):**
-$$p^* = c - \frac{c}{N}$$
+1. **Threshold Selection:** Heterogeneity naturally selects low-cost volunteers, improving efficiency within the Nash equilibrium.
 
-when $k^{\text{opt}}$ satisfies the social optimality condition with equality.
+2. **Gap Persistence:** The fundamental participation gap ($\Delta k \approx \ln N / \rho$) persists regardless of heterogeneity—it stems from the externality, not cost structure.
 
-For large $N$: $p^* \approx c - c/N = c(1 - 1/N) \approx c$
+3. **PoA Sensitivity:** Heterogeneity can amplify PoA in the critical regime, making incentive design more valuable.
 
-The platform must subsidize almost the entire cost to achieve social optimum.
-
-### 2.4.5 Total Incentive Cost
-
-**Theorem 12 (Incentive Budget):**
-The total incentive payment at the social optimum is:
-$$\mathcal{I}^* = p^* \cdot k^{\text{opt}} = k^{\text{opt}} \left[c - B\rho(1-\rho)^{k^{\text{opt}}-1}\right]$$
-
-### 2.4.6 Implementation via Mechanism Design
-
-**Alternative Mechanism: Participation Threshold**
-
-Instead of per-volunteer payment, the platform can offer a collective reward $R$ if at least $k^{\text{opt}}$ volunteers participate.
-
-**Threshold Mechanism:**
-- Platform announces $(k^{\text{opt}}, R)$
-- If $\sum_i a_i \geq k^{\text{opt}}$: each active volunteer receives $R/k$
-- Otherwise: no payment
-
-**Proposition 2:** The threshold mechanism induces $k^{\text{opt}}$ participation with:
-$$R = k^{\text{opt}} \cdot p^*$$
-
-### 2.4.7 Stackelberg Equilibrium Summary
-
-| Quantity | NE (No Incentive) | Social Optimum | Stackelberg |
-|----------|-------------------|----------------|-------------|
-| Active volunteers | $k^*$ | $k^{\text{opt}}$ | $k^{\text{opt}}$ |
-| Per-volunteer incentive | 0 | — | $p^*$ |
-| Total incentive | 0 | — | $k^{\text{opt}} p^*$ |
-| Social welfare | $W(k^*)$ | $W(k^{\text{opt}})$ | $W(k^{\text{opt}})$ |
+4. **Incentive Targeting:** With heterogeneous costs, the optimal incentive need only close the gap between social and private thresholds, not subsidize everyone's full cost.
 
 ---
 
 ## Summary of Key Results
 
-### Equilibrium Expressions
-
-| Quantity | Expression |
-|----------|------------|
-| Detection probability | $P_{\text{det}}(k) = 1 - (1-\rho)^k$ |
-| Expected AoI | $\bar{\Delta}(k) = \frac{(1-\rho)^k}{1-(1-\rho)^k}$ |
-| Nash equilibrium | $k^* = \lfloor 1 + \frac{\ln(c/B\rho)}{\ln(1-\rho)} \rfloor$ |
-| Social optimum | $k^{\text{opt}} = \lfloor 1 + \frac{\ln(c/NB\rho)}{\ln(1-\rho)} \rfloor$ |
-| Participation gap | $\Delta k \approx \frac{\ln N}{-\ln(1-\rho)}$ |
-| Optimal incentive | $p^* = c - B\rho(1-\rho)^{k^{\text{opt}}-1}$ |
-
 ### Main Theorems
 
-1. **Theorem 3:** Nash equilibrium characterization via threshold condition
-2. **Theorem 7:** Under-participation at NE ($k^* \leq k^{\text{opt}}$)
-3. **Theorem 8:** Participation gap scales as $O(\ln N / \rho)$
-4. **Theorem 10:** PoA converges to 1 for large $N$
-5. **Theorem 11:** Optimal Stackelberg incentive to implement social optimum
+| Theorem | Statement                                                                        |
+| ------- | -------------------------------------------------------------------------------- |
+| 2       | Equilibrium threshold: $\bar{c}^* = B\rho(1-\rho)^{k^*}$                         |
+| 3       | Existence of Nash equilibrium                                                    |
+| 4       | Uniqueness under log-concavity                                                   |
+| 7       | Optimal selection: lowest-cost volunteers                                        |
+| 10      | Under-participation: $k^* \leq k^{\text{opt}}$                                   |
+| 11      | Gap: $\Delta k \approx \ln N / \rho$                                             |
+| 15      | PoA divergence in critical regime                                                |
+| 16      | Optimal incentive: $p^* = \bar{c}^{\text{opt}} - B\rho(1-\rho)^{k^{\text{opt}}}$ |
+
+### Key Formulas
+
+| Quantity              | Expression                                                    |
+| --------------------- | ------------------------------------------------------------- |
+| Detection probability | $P_{\text{det}}(k) = 1 - (1-\rho)^k$                          |
+| Expected AoI          | $\bar{\Delta}(k) = \frac{(1-\rho)^k}{1-(1-\rho)^k}$           |
+| Marginal benefit      | $\phi(k) = B\rho(1-\rho)^{k-1}$                               |
+| Nash threshold        | $\bar{c}^* = B\rho(1-\rho)^{k^*}$                             |
+| Nash participation    | $k^* = N \cdot F(\bar{c}^*)$                                  |
+| Social threshold      | $\bar{c}^{\text{opt}} = F^{-1}(k^{\text{opt}}/N)$             |
+| Social condition      | $NB\rho(1-\rho)^{k^{\text{opt}}-1} \geq c_{(k^{\text{opt}})}$ |
+| Optimal incentive     | $p^* = \bar{c}^{\text{opt}} - B\rho(1-\rho)^{k^{\text{opt}}}$ |
 
 ---
 
-## Parameter Sensitivity
+## Extensions and Future Directions
 
-### Effect of Cost $c$:
-- Higher $c$ → Lower $k^*$ and $k^{\text{opt}}$
-- Higher $c$ → Higher required incentive $p^*$
+### 2.8.1 Heterogeneous Detection Radii
 
-### Effect of Benefit $B$:
-- Higher $B$ → Higher $k^*$ and $k^{\text{opt}}$
-- Higher $B$ → Lower required incentive $p^*$
+When volunteers have different detection capabilities $R_i$, the model becomes significantly more complex:
 
-### Effect of Coverage $\rho$:
-- Higher $\rho$ → Lower $k^{\text{opt}}$ needed for same AoI
-- Higher $\rho$ → Smaller participation gap
+**Modified Detection Probability:**
+$$P_{\text{det}}(S) = 1 - \prod_{i \in S}(1 - \rho_i)$$
 
-### Effect of Population $N$:
-- Higher $N$ → Higher $k^{\text{opt}}$ (more people benefit)
-- Higher $N$ → Larger participation gap
-- Higher $N$ → PoA closer to 1
+where $\rho_i = \pi R_i^2 / L^2$.
+
+**Marginal Contribution:**
+Volunteer $i$'s marginal contribution depends on who else is active:
+$$\Delta P_i(S) = \rho_i \prod_{j \in S}(1 - \rho_j)$$
+
+**Efficiency Index:**
+Define $\eta_i = \rho_i / c_i$. The optimal selection problem becomes:
+$$\max_{S \subseteq \mathcal{N}} \left[ NB \cdot P_{\text{det}}(S) - \sum_{i \in S} c_i \right]$$
+
+This is a **submodular maximization** problem (due to diminishing returns in coverage), which is NP-hard in general but admits a $(1-1/e)$-approximation via greedy algorithms.
+
+**Equilibrium Structure:**
+With heterogeneous radii, the equilibrium may not have a simple threshold structure. A volunteer with high $R_i$ and high $c_i$ might participate while one with low $R_i$ and low $c_i$ might not, depending on who else participates.
+
+### 2.8.2 Bayesian Game with Unknown N
+
+If volunteers don't know the exact number of other volunteers:
+
+**Setup:** Each volunteer has a prior $N \sim \text{Poisson}(\lambda)$ or $N \sim \text{Uniform}[N_{\min}, N_{\max}]$.
+
+**Equilibrium:** Bayesian Nash Equilibrium where each type $(c_i, \text{belief about } N)$ optimizes given their beliefs.
+
+This extension is relevant for emergency scenarios where the density of potential helpers is uncertain.
 
 ---
 
-## Extensions (Future Work)
-
-1. **Heterogeneous Volunteers:** Different costs $c_i$, detection radii $R_i$
-2. **Mobile Volunteers:** Time-varying coverage, trajectory optimization
-3. **Multiple Targets:** Competing or collaborative search
-4. **Incomplete Information:** Bayesian game with unknown $\rho$ or $c$
-5. **Dynamic Game:** Repeated interactions, reputation effects
-6. **Network Effects:** Correlation in volunteer positions
-
----
-
-*Document Version: 1.0*
-*Last Updated: December 2024*
+_Document Version: 2.0_
+_Last Updated: January 2025_

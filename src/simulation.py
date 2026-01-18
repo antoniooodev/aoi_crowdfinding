@@ -7,7 +7,7 @@ analytical theory (no boundary truncation effects).
 import numpy as np
 from numpy.typing import NDArray
 from dataclasses import dataclass
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from tqdm import tqdm
 
 
@@ -397,3 +397,394 @@ def validate_analytical(
     validation['all_within_3sigma'] = np.all(validation['within_3sigma'])
     
     return validation
+
+
+# =============================================================================
+# HETEROGENEOUS COST VALIDATION (Version 2.0)
+# =============================================================================
+
+from .config import HeterogeneousCostParams
+
+
+def simulate_threshold_equilibrium(
+    N: int,
+    rho: float,
+    B: float,
+    cost_params: HeterogeneousCostParams,
+    n_runs: int = 1000,
+    seed: int = 42
+) -> Dict:
+    """
+    Validate threshold equilibrium via Monte Carlo.
+    
+    Each run:
+    1. Sample costs c_i ~ F
+    2. Compute analytical threshold c̄*
+    3. Count volunteers with c_i <= c̄*
+    4. Compare to predicted k*
+    
+    Parameters
+    ----------
+    N : int
+        Number of volunteers
+    rho : float
+        Coverage ratio
+    B : float
+        Benefit parameter
+    cost_params : HeterogeneousCostParams
+        Cost distribution parameters
+    n_runs : int
+        Number of Monte Carlo runs
+    seed : int
+        Random seed
+    
+    Returns
+    -------
+    results : dict
+        Validation results
+    """
+    from .game import find_nash_heterogeneous, find_nash_heterogeneous_with_costs
+    
+    rng = np.random.default_rng(seed)
+    
+    # Analytical prediction
+    k_star_analytical, c_bar_star = find_nash_heterogeneous(N, rho, B, cost_params)
+    
+    # Monte Carlo
+    k_star_samples = []
+    threshold_samples = []
+    
+    for i in range(n_runs):
+        costs = cost_params.sample(N, rng)
+        k_star_sim, c_bar_sim, _ = find_nash_heterogeneous_with_costs(N, rho, B, costs)
+        k_star_samples.append(k_star_sim)
+        threshold_samples.append(c_bar_sim)
+    
+    k_star_samples = np.array(k_star_samples)
+    threshold_samples = np.array(threshold_samples)
+    
+    return {
+        'n_runs': n_runs,
+        'N': N,
+        'rho': rho,
+        'B': B,
+        'c_min': cost_params.c_min,
+        'c_max': cost_params.c_max,
+        'distribution': cost_params.distribution,
+        # Analytical
+        'k_star_analytical': k_star_analytical,
+        'c_bar_star_analytical': c_bar_star,
+        # Simulated
+        'k_star_mean': float(np.mean(k_star_samples)),
+        'k_star_std': float(np.std(k_star_samples)),
+        'k_star_min': int(np.min(k_star_samples)),
+        'k_star_max': int(np.max(k_star_samples)),
+        'c_bar_star_mean': float(np.mean(threshold_samples)),
+        # Comparison
+        'k_star_error': float(np.mean(k_star_samples) - k_star_analytical),
+        'k_star_relative_error': float(abs(np.mean(k_star_samples) - k_star_analytical) / max(1, k_star_analytical)),
+    }
+
+
+def simulate_social_optimum_heterogeneous(
+    N: int,
+    rho: float,
+    B: float,
+    cost_params: HeterogeneousCostParams,
+    n_runs: int = 1000,
+    seed: int = 42
+) -> Dict:
+    """
+    Validate social optimum selection via Monte Carlo.
+    
+    Each run:
+    1. Sample costs
+    2. Find optimal selection (greedy by cost)
+    3. Compare k_opt to analytical prediction
+    
+    Parameters
+    ----------
+    N : int
+        Number of volunteers
+    rho : float
+        Coverage ratio
+    B : float
+        Benefit parameter
+    cost_params : HeterogeneousCostParams
+        Cost distribution parameters
+    n_runs : int
+        Number of Monte Carlo runs
+    seed : int
+        Random seed
+    
+    Returns
+    -------
+    results : dict
+        Validation results
+    """
+    from .game import find_social_optimum_heterogeneous, find_social_optimum_heterogeneous_expected
+    
+    rng = np.random.default_rng(seed)
+    
+    # Analytical prediction
+    k_opt_analytical, c_bar_opt = find_social_optimum_heterogeneous_expected(N, rho, B, cost_params)
+    
+    # Monte Carlo
+    k_opt_samples = []
+    welfare_samples = []
+    
+    for i in range(n_runs):
+        costs = cost_params.sample(N, rng)
+        k_opt_sim, _, welfare_sim = find_social_optimum_heterogeneous(N, rho, B, costs)
+        k_opt_samples.append(k_opt_sim)
+        welfare_samples.append(welfare_sim)
+    
+    k_opt_samples = np.array(k_opt_samples)
+    welfare_samples = np.array(welfare_samples)
+    
+    return {
+        'n_runs': n_runs,
+        'N': N,
+        'rho': rho,
+        'B': B,
+        'c_min': cost_params.c_min,
+        'c_max': cost_params.c_max,
+        'distribution': cost_params.distribution,
+        # Analytical
+        'k_opt_analytical': k_opt_analytical,
+        'c_bar_opt_analytical': c_bar_opt,
+        # Simulated
+        'k_opt_mean': float(np.mean(k_opt_samples)),
+        'k_opt_std': float(np.std(k_opt_samples)),
+        'k_opt_min': int(np.min(k_opt_samples)),
+        'k_opt_max': int(np.max(k_opt_samples)),
+        'welfare_mean': float(np.mean(welfare_samples)),
+        'welfare_std': float(np.std(welfare_samples)),
+        # Comparison
+        'k_opt_error': float(np.mean(k_opt_samples) - k_opt_analytical),
+        'k_opt_relative_error': float(abs(np.mean(k_opt_samples) - k_opt_analytical) / max(1, k_opt_analytical)),
+    }
+
+
+def simulate_poa_heterogeneous(
+    N: int,
+    rho: float,
+    B: float,
+    cost_params: HeterogeneousCostParams,
+    n_runs: int = 1000,
+    seed: int = 42
+) -> Dict:
+    """
+    Validate Price of Anarchy via Monte Carlo.
+    
+    Each run:
+    1. Sample costs
+    2. Find Nash equilibrium welfare
+    3. Find optimal welfare
+    4. Compute PoA
+    
+    Parameters
+    ----------
+    N : int
+        Number of volunteers
+    rho : float
+        Coverage ratio
+    B : float
+        Benefit parameter
+    cost_params : HeterogeneousCostParams
+        Cost distribution parameters
+    n_runs : int
+        Number of Monte Carlo runs
+    seed : int
+        Random seed
+    
+    Returns
+    -------
+    results : dict
+        Validation results
+    """
+    from .game import (
+        find_nash_heterogeneous_with_costs,
+        find_social_optimum_heterogeneous,
+        social_welfare_heterogeneous,
+        price_of_anarchy_heterogeneous
+    )
+    
+    rng = np.random.default_rng(seed)
+    
+    # Analytical prediction
+    poa_analytical = price_of_anarchy_heterogeneous(N, rho, B, cost_params)
+    
+    # Monte Carlo
+    poa_samples = []
+    welfare_nash_samples = []
+    welfare_opt_samples = []
+    
+    for i in range(n_runs):
+        costs = cost_params.sample(N, rng)
+        
+        # Nash equilibrium
+        k_nash, c_bar_nash, active_nash = find_nash_heterogeneous_with_costs(N, rho, B, costs)
+        welfare_nash = social_welfare_heterogeneous(k_nash, N, rho, B, np.sum(costs[active_nash]))
+        
+        # Social optimum
+        k_opt, active_opt, welfare_opt = find_social_optimum_heterogeneous(N, rho, B, costs)
+        
+        if welfare_nash > 0:
+            poa = welfare_opt / welfare_nash
+        else:
+            poa = np.inf
+        
+        poa_samples.append(poa)
+        welfare_nash_samples.append(welfare_nash)
+        welfare_opt_samples.append(welfare_opt)
+    
+    poa_samples = np.array(poa_samples)
+    poa_finite = poa_samples[np.isfinite(poa_samples)]
+    
+    return {
+        'n_runs': n_runs,
+        'N': N,
+        'rho': rho,
+        'B': B,
+        'c_min': cost_params.c_min,
+        'c_max': cost_params.c_max,
+        # Analytical
+        'poa_analytical': poa_analytical,
+        # Simulated
+        'poa_mean': float(np.mean(poa_finite)) if len(poa_finite) > 0 else np.inf,
+        'poa_std': float(np.std(poa_finite)) if len(poa_finite) > 0 else np.inf,
+        'poa_median': float(np.median(poa_finite)) if len(poa_finite) > 0 else np.inf,
+        'poa_max': float(np.max(poa_finite)) if len(poa_finite) > 0 else np.inf,
+        'n_infinite_poa': int(np.sum(~np.isfinite(poa_samples))),
+        'welfare_nash_mean': float(np.mean(welfare_nash_samples)),
+        'welfare_opt_mean': float(np.mean(welfare_opt_samples)),
+    }
+
+
+def validate_heterogeneous_model(
+    N: int,
+    rho: float,
+    B: float,
+    cost_params: HeterogeneousCostParams,
+    n_runs: int = 1000,
+    seed: int = 42,
+    tolerance: float = 0.10
+) -> Dict:
+    """
+    Complete validation suite for heterogeneous model.
+    
+    Validates:
+    1. Nash equilibrium (threshold structure)
+    2. Social optimum (selection rule)
+    3. Price of Anarchy
+    
+    Parameters
+    ----------
+    N : int
+        Number of volunteers
+    rho : float
+        Coverage ratio
+    B : float
+        Benefit parameter
+    cost_params : HeterogeneousCostParams
+        Cost distribution parameters
+    n_runs : int
+        Number of Monte Carlo runs
+    seed : int
+        Random seed
+    tolerance : float
+        Relative tolerance for validation
+    
+    Returns
+    -------
+    results : dict
+        Comprehensive validation results
+    """
+    # Run all validations
+    nash_validation = simulate_threshold_equilibrium(N, rho, B, cost_params, n_runs, seed)
+    opt_validation = simulate_social_optimum_heterogeneous(N, rho, B, cost_params, n_runs, seed)
+    poa_validation = simulate_poa_heterogeneous(N, rho, B, cost_params, n_runs, seed)
+    
+    # Check if within tolerance
+    nash_ok = nash_validation['k_star_relative_error'] < tolerance
+    opt_ok = opt_validation['k_opt_relative_error'] < tolerance
+    
+    return {
+        'nash': nash_validation,
+        'optimum': opt_validation,
+        'poa': poa_validation,
+        'nash_validated': nash_ok,
+        'optimum_validated': opt_ok,
+        'all_validated': nash_ok and opt_ok,
+        'tolerance': tolerance,
+    }
+
+
+def sweep_heterogeneity_validation(
+    N: int,
+    rho: float,
+    B: float,
+    mean_cost: float,
+    spread_ratios: List[float],
+    n_runs: int = 500,
+    seed: int = 42
+) -> Dict[str, NDArray]:
+    """
+    Validate model across heterogeneity levels.
+    
+    Parameters
+    ----------
+    N : int
+        Number of volunteers
+    rho : float
+        Coverage ratio
+    B : float
+        Benefit parameter
+    mean_cost : float
+        Fixed mean cost
+    spread_ratios : list of float
+        c_max/c_min ratios to test
+    n_runs : int
+        Monte Carlo runs per configuration
+    seed : int
+        Random seed
+    
+    Returns
+    -------
+    results : dict of arrays
+    """
+    n = len(spread_ratios)
+    results = {
+        'spread_ratio': np.array(spread_ratios),
+        'c_min': np.zeros(n),
+        'c_max': np.zeros(n),
+        'k_star_analytical': np.zeros(n, dtype=int),
+        'k_star_simulated': np.zeros(n),
+        'k_star_error': np.zeros(n),
+        'k_opt_analytical': np.zeros(n, dtype=int),
+        'k_opt_simulated': np.zeros(n),
+        'k_opt_error': np.zeros(n),
+        'poa_analytical': np.zeros(n),
+        'poa_simulated': np.zeros(n),
+    }
+    
+    for i, ratio in enumerate(spread_ratios):
+        c_min = 2 * mean_cost / (1 + ratio)
+        c_max = ratio * c_min
+        cost_params = HeterogeneousCostParams(c_min=c_min, c_max=c_max)
+        
+        validation = validate_heterogeneous_model(N, rho, B, cost_params, n_runs, seed + i * 1000)
+        
+        results['c_min'][i] = c_min
+        results['c_max'][i] = c_max
+        results['k_star_analytical'][i] = validation['nash']['k_star_analytical']
+        results['k_star_simulated'][i] = validation['nash']['k_star_mean']
+        results['k_star_error'][i] = validation['nash']['k_star_relative_error']
+        results['k_opt_analytical'][i] = validation['optimum']['k_opt_analytical']
+        results['k_opt_simulated'][i] = validation['optimum']['k_opt_mean']
+        results['k_opt_error'][i] = validation['optimum']['k_opt_relative_error']
+        results['poa_analytical'][i] = validation['poa']['poa_analytical']
+        results['poa_simulated'][i] = validation['poa']['poa_mean']
+    
+    return results

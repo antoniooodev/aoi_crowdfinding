@@ -1,20 +1,35 @@
 """
-emergency_simulation_v3.py - Final Corrected Simulation
+emergency_simulation.py - Final Corrected Simulation
+
+Version 2.0: Added heterogeneous cost model support.
 
 TWO MODES:
 1. STATIC: i.i.d. positions each step → validates P_det formula exactly
 2. DYNAMIC: agent movement → shows qualitative under-participation effect
 
-Key insight: The agent-based simulation is NOT meant to validate the exact formula,
-but to demonstrate the qualitative phenomenon of under-participation.
+TWO COST MODELS:
+1. HOMOGENEOUS: All volunteers have same cost c (original)
+2. HETEROGENEOUS: Volunteers have costs c_i ~ F[c_min, c_max] (new)
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
-from dataclasses import dataclass
-from typing import List, Dict, Tuple
+from dataclasses import dataclass, field
+from typing import List, Dict, Tuple, Optional
 from enum import Enum
 import os
+import sys
+
+# Add parent directory for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.config import HeterogeneousCostParams
+from src.game import (
+    find_nash_heterogeneous,
+    find_social_optimum_heterogeneous_expected,
+    analyze_equilibrium_heterogeneous,
+    price_of_anarchy_heterogeneous,
+)
 
 
 # =============================================================================
@@ -38,6 +53,12 @@ class Config:
     response_time: int = 60     # Steps needed to complete rescue
     aoi_threshold: int = 30     # Max AoI during rescue
     
+    # Cost model: homogeneous (single c) or heterogeneous (c_min, c_max)
+    use_heterogeneous: bool = False
+    c_min: Optional[float] = None
+    c_max: Optional[float] = None
+    cost_distribution: str = "uniform"
+    
     @property
     def rho(self) -> float:
         return np.pi * self.R**2 / self.L**2
@@ -49,10 +70,29 @@ class Config:
     @property
     def NB_rho(self) -> float:
         return self.N * self.B * self.rho
+    
+    def get_cost_params(self, c: float) -> HeterogeneousCostParams:
+        """Get cost parameters for heterogeneous model."""
+        if self.use_heterogeneous and self.c_min is not None and self.c_max is not None:
+            return HeterogeneousCostParams(
+                c_min=self.c_min,
+                c_max=self.c_max,
+                distribution=self.cost_distribution
+            )
+        else:
+            # Use c as mean, create spread around it
+            spread_ratio = 2.0  # c_max/c_min = 2
+            c_min = 2 * c / (1 + spread_ratio)
+            c_max = spread_ratio * c_min
+            return HeterogeneousCostParams(c_min=c_min, c_max=c_max)
 
+
+# =============================================================================
+# HOMOGENEOUS MODEL FUNCTIONS (original)
+# =============================================================================
 
 def compute_k_star(N: int, rho: float, B: float, c: float) -> int:
-    """Nash equilibrium."""
+    """Nash equilibrium (homogeneous cost)."""
     if c >= B * rho:
         return 0
     if c <= 0:
@@ -62,7 +102,7 @@ def compute_k_star(N: int, rho: float, B: float, c: float) -> int:
 
 
 def compute_k_opt(N: int, rho: float, B: float, c: float) -> int:
-    """Social optimum."""
+    """Social optimum (homogeneous cost)."""
     if c >= N * B * rho:
         return 0
     if c <= 0:
@@ -84,6 +124,24 @@ def analytical_aoi(k: int, rho: float) -> float:
     if P <= 0:
         return np.inf
     return 1.0 / P - 1.0
+
+
+# =============================================================================
+# HETEROGENEOUS MODEL FUNCTIONS (new)
+# =============================================================================
+
+def compute_k_star_heterogeneous(N: int, rho: float, B: float, 
+                                  cost_params: HeterogeneousCostParams) -> int:
+    """Nash equilibrium (heterogeneous costs)."""
+    k_star, _ = find_nash_heterogeneous(N, rho, B, cost_params)
+    return k_star
+
+
+def compute_k_opt_heterogeneous(N: int, rho: float, B: float,
+                                 cost_params: HeterogeneousCostParams) -> int:
+    """Social optimum (heterogeneous costs)."""
+    k_opt, _ = find_social_optimum_heterogeneous_expected(N, rho, B, cost_params)
+    return k_opt
 
 
 # =============================================================================
@@ -239,65 +297,66 @@ class DynamicSimulation:
                 self.vol_x[i] += (dx/dist) * min(step, dist)
                 self.vol_y[i] += (dy/dist) * min(step, dist)
         
-        # Move target
-        if self.rng.random() < 0.02:
+        # Move target (random walk)
+        if self.rng.random() < 0.1:  # Change direction occasionally
             angle = self.rng.uniform(0, 2*np.pi)
-            self.target_vx = np.cos(angle) * self.config.target_speed
-            self.target_vy = np.sin(angle) * self.config.target_speed
+            self.target_vx = self.config.target_speed * np.cos(angle)
+            self.target_vy = self.config.target_speed * np.sin(angle)
         
-        margin = self.config.R
         new_x = self.target_x + self.target_vx
         new_y = self.target_y + self.target_vy
         
+        # Bounce off walls
+        margin = self.config.R
         if new_x < margin or new_x > self.config.L - margin:
             self.target_vx *= -1
+            new_x = np.clip(new_x, margin, self.config.L - margin)
         if new_y < margin or new_y > self.config.L - margin:
             self.target_vy *= -1
+            new_y = np.clip(new_y, margin, self.config.L - margin)
         
-        self.target_x = np.clip(new_x, margin, self.config.L - margin)
-        self.target_y = np.clip(new_y, margin, self.config.L - margin)
+        self.target_x = new_x
+        self.target_y = new_y
         
         # Check detection
-        active_x = self.vol_x[self.vol_active]
-        active_y = self.vol_y[self.vol_active]
-        if len(active_x) > 0:
-            distances = np.sqrt((active_x - self.target_x)**2 + 
-                               (active_y - self.target_y)**2)
-            detected = np.any(distances <= self.config.R)
-        else:
-            detected = False
+        detected = False
+        for i in range(self.config.N):
+            if not self.vol_active[i]:
+                continue
+            dist = np.sqrt((self.vol_x[i] - self.target_x)**2 + 
+                          (self.vol_y[i] - self.target_y)**2)
+            if dist <= self.config.R:
+                detected = True
+                break
         
         # Update AoI
         if detected:
             self.aoi = 0
             self.detections += 1
-            if not self.rescue_started:
-                self.rescue_started = True
-                self.rescue_start_time = self.time
         else:
             self.aoi += 1
         
         self.aoi_history.append(self.aoi)
         
-        # Check rescue completion
+        # Rescue logic
+        if not self.rescue_started and detected:
+            self.rescue_started = True
+            self.rescue_start_time = self.time
+        
         if self.rescue_started:
-            if self.aoi > self.config.aoi_threshold:
-                # Failed - AoI exceeded during rescue
-                self.rescue_started = False
-                self.rescue_start_time = None
-            elif self.time - self.rescue_start_time >= self.config.response_time:
-                self.success = True
+            elapsed = self.time - self.rescue_start_time
+            if elapsed >= self.config.response_time:
+                if self.aoi <= self.config.aoi_threshold:
+                    self.success = True
         
         self.time += 1
-        return self.success
     
     def run(self) -> Dict:
-        """Run to completion or timeout."""
+        """Run until success or timeout."""
         while self.time < self.config.T_max and not self.success:
             self.step()
         
         return {
-            'k': self.k,
             'success': self.success,
             'time': self.time,
             'detections': self.detections,
@@ -307,20 +366,15 @@ class DynamicSimulation:
 
 
 # =============================================================================
-# INFORMATIVE COST SWEEP
+# INFORMATIVE COST SWEEP - HOMOGENEOUS (original)
 # =============================================================================
 
-def run_informative_sweep(config: Config, n_runs: int = 50) -> Dict:
+def run_informative_sweep_homogeneous(config: Config, n_runs: int = 50) -> Dict:
     """
-    Sweep cost in region where BOTH k* and k_opt vary.
-    
-    For k* to vary: c ∈ (0, Bρ)
-    For k_opt to vary: c ∈ (0, NBρ)
-    
-    We want c where k* ∈ (0, N) and k_opt ∈ (0, N).
+    Sweep cost in region where BOTH k* and k_opt vary (homogeneous cost).
     """
     print("\n" + "="*60)
-    print("INFORMATIVE COST SWEEP")
+    print("HOMOGENEOUS COST SWEEP")
     print("="*60)
     
     rho = config.rho
@@ -330,8 +384,6 @@ def run_informative_sweep(config: Config, n_runs: int = 50) -> Dict:
     print(f"Bρ = {B_rho:.4f} (threshold for k* > 0)")
     print(f"NBρ = {NB_rho:.4f} (threshold for k_opt > 0)")
     
-    # Sweep c from 0.1*Bρ to 0.95*Bρ
-    # This gives k* from ~N down to ~0
     c_values = np.linspace(0.1 * B_rho, 0.95 * B_rho, 12)
     
     results = {
@@ -360,12 +412,10 @@ def run_informative_sweep(config: Config, n_runs: int = 50) -> Dict:
         success_opt = 0
         
         for run in range(n_runs):
-            # Nash
             sim = DynamicSimulation(config, k_star, seed=run)
             if sim.run()['success']:
                 success_star += 1
             
-            # Optimal
             sim = DynamicSimulation(config, k_opt, seed=run + 10000)
             if sim.run()['success']:
                 success_opt += 1
@@ -390,14 +440,113 @@ def run_informative_sweep(config: Config, n_runs: int = 50) -> Dict:
 
 
 # =============================================================================
+# INFORMATIVE COST SWEEP - HETEROGENEOUS (new)
+# =============================================================================
+
+def run_informative_sweep_heterogeneous(config: Config, n_runs: int = 50,
+                                         spread_ratio: float = 2.0) -> Dict:
+    """
+    Sweep cost in region where BOTH k* and k_opt vary (heterogeneous costs).
+    
+    Parameters
+    ----------
+    config : Config
+        Simulation configuration
+    n_runs : int
+        Number of Monte Carlo runs per configuration
+    spread_ratio : float
+        Heterogeneity ratio c_max/c_min (fixed across sweep)
+    """
+    print("\n" + "="*60)
+    print(f"HETEROGENEOUS COST SWEEP (c_max/c_min = {spread_ratio})")
+    print("="*60)
+    
+    rho = config.rho
+    B_rho = config.B_rho
+    NB_rho = config.NB_rho
+    
+    print(f"Bρ = {B_rho:.4f} (threshold for k* > 0)")
+    print(f"NBρ = {NB_rho:.4f} (threshold for k_opt > 0)")
+    print(f"Heterogeneity ratio: {spread_ratio}")
+    
+    # Sweep mean cost
+    mean_costs = np.linspace(0.1 * B_rho, 0.95 * B_rho, 12)
+    
+    results = {
+        'mean_cost': [], 'c_norm': [],
+        'c_min': [], 'c_max': [],
+        'k_star': [], 'k_opt': [], 'gap': [],
+        'P_det_star': [], 'P_det_opt': [],
+        'aoi_star': [], 'aoi_opt': [],
+        'success_star': [], 'success_opt': [],
+    }
+    
+    print(f"\n{'c̄/(Bρ)':<8} {'c_min':<7} {'c_max':<7} {'k*':<5} {'k_opt':<6} "
+          f"{'Gap':<5} {'Succ*%':<8} {'Succ_opt%':<8}")
+    print("-"*75)
+    
+    for mean_c in mean_costs:
+        # Compute c_min, c_max from mean and ratio
+        c_min = 2 * mean_c / (1 + spread_ratio)
+        c_max = spread_ratio * c_min
+        
+        cost_params = HeterogeneousCostParams(c_min=c_min, c_max=c_max)
+        
+        k_star = compute_k_star_heterogeneous(config.N, rho, config.B, cost_params)
+        k_opt = compute_k_opt_heterogeneous(config.N, rho, config.B, cost_params)
+        
+        P_star = analytical_P_det(k_star, rho)
+        P_opt = analytical_P_det(k_opt, rho)
+        aoi_star = analytical_aoi(k_star, rho)
+        aoi_opt = analytical_aoi(k_opt, rho)
+        
+        # Run dynamic simulations
+        success_star = 0
+        success_opt = 0
+        
+        for run in range(n_runs):
+            sim = DynamicSimulation(config, k_star, seed=run)
+            if sim.run()['success']:
+                success_star += 1
+            
+            sim = DynamicSimulation(config, k_opt, seed=run + 10000)
+            if sim.run()['success']:
+                success_opt += 1
+        
+        results['mean_cost'].append(mean_c)
+        results['c_norm'].append(mean_c / B_rho)
+        results['c_min'].append(c_min)
+        results['c_max'].append(c_max)
+        results['k_star'].append(k_star)
+        results['k_opt'].append(k_opt)
+        results['gap'].append(k_opt - k_star)
+        results['P_det_star'].append(P_star)
+        results['P_det_opt'].append(P_opt)
+        results['aoi_star'].append(aoi_star)
+        results['aoi_opt'].append(aoi_opt)
+        results['success_star'].append(success_star / n_runs)
+        results['success_opt'].append(success_opt / n_runs)
+        
+        print(f"{mean_c/B_rho:<8.2f} {c_min:<7.4f} {c_max:<7.4f} "
+              f"{k_star:<5} {k_opt:<6} {k_opt-k_star:<5} "
+              f"{100*success_star/n_runs:<8.1f} {100*success_opt/n_runs:<8.1f}")
+    
+    return results
+
+
+# =============================================================================
 # VISUALIZATION
 # =============================================================================
 
-def plot_all(validation: Dict, sweep: Dict, output_dir: str = 'results/figures'):
+def plot_all(validation: Dict, sweep_hom: Dict, sweep_het: Dict = None,
+                output_dir: str = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'results', 'figures')):
     """Generate all plots."""
     os.makedirs(output_dir, exist_ok=True)
     
-    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+    if sweep_het is not None:
+        fig, axes = plt.subplots(2, 4, figsize=(20, 10))
+    else:
+        fig, axes = plt.subplots(2, 3, figsize=(15, 10))
     
     # 1. P_det validation (static)
     ax = axes[0, 0]
@@ -423,42 +572,42 @@ def plot_all(validation: Dict, sweep: Dict, output_dir: str = 'results/figures')
     ax.set_title('Validation Error')
     ax.legend()
     
-    # 3. Participation: k* vs k_opt
+    # 3. Participation: k* vs k_opt (homogeneous)
     ax = axes[0, 2]
-    c_norm = np.array(sweep['c_norm'])
-    ax.plot(c_norm, sweep['k_star'], 'b-o', label='Nash $k^*$')
-    ax.plot(c_norm, sweep['k_opt'], 'g-s', label='Optimal $k^{opt}$')
-    ax.fill_between(c_norm, sweep['k_star'], sweep['k_opt'], alpha=0.2, color='red',
-                    label='Under-participation gap')
+    c_norm = np.array(sweep_hom['c_norm'])
+    ax.plot(c_norm, sweep_hom['k_star'], 'b-o', label='Nash $k^*$')
+    ax.plot(c_norm, sweep_hom['k_opt'], 'g-s', label='Optimal $k^{opt}$')
+    ax.fill_between(c_norm, sweep_hom['k_star'], sweep_hom['k_opt'], alpha=0.2, color='red',
+                    label='Gap')
     ax.axvline(1.0, color='red', ls='--', alpha=0.5)
     ax.set_xlabel('Normalized Cost $c/(Bρ)$')
     ax.set_ylabel('Active Volunteers')
-    ax.set_title('Participation Gap')
+    ax.set_title('Participation Gap (Homogeneous)')
     ax.legend()
     ax.grid(True, alpha=0.3)
     
-    # 4. Theoretical AoI
+    # 4. Theoretical AoI (homogeneous)
     ax = axes[1, 0]
-    ax.plot(c_norm, sweep['aoi_star'], 'b-o', label='Nash AoI')
-    ax.plot(c_norm, sweep['aoi_opt'], 'g-s', label='Optimal AoI')
+    ax.plot(c_norm, sweep_hom['aoi_star'], 'b-o', label='Nash AoI')
+    ax.plot(c_norm, sweep_hom['aoi_opt'], 'g-s', label='Optimal AoI')
     ax.set_xlabel('Normalized Cost $c/(Bρ)$')
     ax.set_ylabel('Expected AoI (steps)')
-    ax.set_title('Theoretical AoI Comparison')
+    ax.set_title('Theoretical AoI (Homogeneous)')
     ax.legend()
     ax.grid(True, alpha=0.3)
     ax.set_yscale('log')
     
-    # 5. Success rate (dynamic simulation)
+    # 5. Success rate (homogeneous)
     ax = axes[1, 1]
-    ax.plot(c_norm, np.array(sweep['success_star']) * 100, 'b-o', label='Nash')
-    ax.plot(c_norm, np.array(sweep['success_opt']) * 100, 'g-s', label='Optimal')
+    ax.plot(c_norm, np.array(sweep_hom['success_star']) * 100, 'b-o', label='Nash')
+    ax.plot(c_norm, np.array(sweep_hom['success_opt']) * 100, 'g-s', label='Optimal')
     ax.fill_between(c_norm, 
-                    np.array(sweep['success_star']) * 100,
-                    np.array(sweep['success_opt']) * 100,
+                    np.array(sweep_hom['success_star']) * 100,
+                    np.array(sweep_hom['success_opt']) * 100,
                     alpha=0.2, color='red', label='Efficiency loss')
     ax.set_xlabel('Normalized Cost $c/(Bρ)$')
     ax.set_ylabel('Rescue Success Rate (%)')
-    ax.set_title('Success Rate (Dynamic Simulation)')
+    ax.set_title('Success Rate (Homogeneous)')
     ax.legend()
     ax.grid(True, alpha=0.3)
     ax.set_ylim(0, 105)
@@ -467,30 +616,71 @@ def plot_all(validation: Dict, sweep: Dict, output_dir: str = 'results/figures')
     ax = axes[1, 2]
     ax.axis('off')
     
-    avg_gap = np.mean(sweep['gap'])
-    avg_loss = np.mean(np.array(sweep['success_opt']) - np.array(sweep['success_star'])) * 100
-    max_loss = np.max(np.array(sweep['success_opt']) - np.array(sweep['success_star'])) * 100
+    avg_gap_hom = np.mean(sweep_hom['gap'])
+    avg_loss_hom = np.mean(np.array(sweep_hom['success_opt']) - np.array(sweep_hom['success_star'])) * 100
+    max_loss_hom = np.max(np.array(sweep_hom['success_opt']) - np.array(sweep_hom['success_star'])) * 100
     
     summary = f"""
-    SUMMARY
+    SUMMARY - HOMOGENEOUS
     ═══════════════════════════════
     
-    Average participation gap: {avg_gap:.1f}
-    
-    Average efficiency loss: {avg_loss:.1f}%
-    Maximum efficiency loss: {max_loss:.1f}%
-    
-    Key insight:
-    As cost increases toward Bρ,
-    Nash participation drops,
-    while social optimum remains high.
-    
-    This causes increasing efficiency loss
-    in rescue success rate.
+    Average participation gap: {avg_gap_hom:.1f}
+    Average efficiency loss: {avg_loss_hom:.1f}%
+    Maximum efficiency loss: {max_loss_hom:.1f}%
     """
-    ax.text(0.1, 0.9, summary, transform=ax.transAxes, fontsize=11,
+    
+    if sweep_het is not None:
+        avg_gap_het = np.mean(sweep_het['gap'])
+        avg_loss_het = np.mean(np.array(sweep_het['success_opt']) - np.array(sweep_het['success_star'])) * 100
+        max_loss_het = np.max(np.array(sweep_het['success_opt']) - np.array(sweep_het['success_star'])) * 100
+        
+        summary += f"""
+    SUMMARY - HETEROGENEOUS
+    ═══════════════════════════════
+    
+    Average participation gap: {avg_gap_het:.1f}
+    Average efficiency loss: {avg_loss_het:.1f}%
+    Maximum efficiency loss: {max_loss_het:.1f}%
+    
+    COMPARISON
+    ═══════════════════════════════
+    Gap difference: {avg_gap_het - avg_gap_hom:+.1f}
+    Loss difference: {avg_loss_het - avg_loss_hom:+.1f}%
+    """
+    
+    ax.text(0.1, 0.95, summary, transform=ax.transAxes, fontsize=10,
             verticalalignment='top', family='monospace',
             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+    
+    # Heterogeneous plots if available
+    if sweep_het is not None:
+        # 7. Participation (heterogeneous)
+        ax = axes[0, 3]
+        c_norm_het = np.array(sweep_het['c_norm'])
+        ax.plot(c_norm_het, sweep_het['k_star'], 'b-o', label='Nash $k^*$')
+        ax.plot(c_norm_het, sweep_het['k_opt'], 'g-s', label='Optimal $k^{opt}$')
+        ax.fill_between(c_norm_het, sweep_het['k_star'], sweep_het['k_opt'], 
+                        alpha=0.2, color='red', label='Gap')
+        ax.set_xlabel('Normalized Mean Cost $\\bar{c}/(Bρ)$')
+        ax.set_ylabel('Active Volunteers')
+        ax.set_title('Participation Gap (Heterogeneous)')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        # 8. Success rate (heterogeneous)
+        ax = axes[1, 3]
+        ax.plot(c_norm_het, np.array(sweep_het['success_star']) * 100, 'b-o', label='Nash')
+        ax.plot(c_norm_het, np.array(sweep_het['success_opt']) * 100, 'g-s', label='Optimal')
+        ax.fill_between(c_norm_het,
+                        np.array(sweep_het['success_star']) * 100,
+                        np.array(sweep_het['success_opt']) * 100,
+                        alpha=0.2, color='red', label='Efficiency loss')
+        ax.set_xlabel('Normalized Mean Cost $\\bar{c}/(Bρ)$')
+        ax.set_ylabel('Rescue Success Rate (%)')
+        ax.set_title('Success Rate (Heterogeneous)')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        ax.set_ylim(0, 105)
     
     plt.tight_layout()
     plt.savefig(f'{output_dir}/complete_analysis.png', dpi=150)
@@ -502,9 +692,18 @@ def plot_all(validation: Dict, sweep: Dict, output_dir: str = 'results/figures')
 # MAIN
 # =============================================================================
 
-def main():
+def main(use_heterogeneous: bool = True):
+    """
+    Main function.
+    
+    Parameters
+    ----------
+    use_heterogeneous : bool
+        If True, run both homogeneous and heterogeneous analysis.
+        If False, run only homogeneous (original behavior).
+    """
     print("="*60)
-    print("FINAL CORRECTED SIMULATION")
+    print("EMERGENCY CROWD-FINDING SIMULATION")
     print("="*60)
     
     config = Config(L=500, N=100, R=30, B=10)
@@ -514,6 +713,7 @@ def main():
     print(f"  ρ = {config.rho:.6f}")
     print(f"  Bρ = {config.B_rho:.4f}")
     print(f"  NBρ = {config.NB_rho:.4f}")
+    print(f"  Use heterogeneous model: {use_heterogeneous}")
     
     # 1. Validate P_det with STATIC simulation
     print("\n" + "="*60)
@@ -523,19 +723,28 @@ def main():
     k_values = [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     validation = validate_P_det_static(config, k_values, n_runs=100, n_steps=2000)
     
-    # 2. Run informative cost sweep with DYNAMIC simulation
+    # 2. Run homogeneous cost sweep
     print("\n" + "="*60)
-    print("STEP 2: Cost sweep (dynamic agent simulation)")
+    print("STEP 2a: Cost sweep - Homogeneous model")
     print("="*60)
     
-    sweep = run_informative_sweep(config, n_runs=30)
+    sweep_hom = run_informative_sweep_homogeneous(config, n_runs=30)
     
-    # 3. Plot
+    # 3. Run heterogeneous cost sweep (if enabled)
+    sweep_het = None
+    if use_heterogeneous:
+        print("\n" + "="*60)
+        print("STEP 2b: Cost sweep - Heterogeneous model")
+        print("="*60)
+        
+        sweep_het = run_informative_sweep_heterogeneous(config, n_runs=30, spread_ratio=2.0)
+    
+    # 4. Plot
     print("\n" + "="*60)
     print("STEP 3: Generate plots")
     print("="*60)
     
-    plot_all(validation, sweep)
+    plot_all(validation, sweep_hom, sweep_het)
     
     print("\n" + "="*60)
     print("COMPLETE")
@@ -543,4 +752,10 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--homogeneous-only', action='store_true',
+                        help='Run only homogeneous model (original behavior)')
+    args = parser.parse_args()
+    
+    main(use_heterogeneous=not args.homogeneous_only)
