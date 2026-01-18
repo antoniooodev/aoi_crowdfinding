@@ -914,6 +914,3 @@ If volunteers don't know the exact number of other volunteers:
 This extension is relevant for emergency scenarios where the density of potential helpers is uncertain.
 
 ---
-
-_Document Version: 2.0_
-_Last Updated: January 2025_
