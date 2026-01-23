@@ -141,10 +141,10 @@ Each active volunteer independently covers the target with probability $\rho$. T
 3. $\lim_{k \to \infty} P_{\text{det}}(k) = 1$
 4. $P_{\text{det}}(k)$ is concave in $k$ (diminishing returns)
 
-_Proof of concavity:_
-$$\frac{\partial^2 P_{\text{det}}}{\partial k^2} = (1-\rho)^k (\ln(1-\rho))^2 > 0$$
+_Proof of concavity (continuous relaxation):_
+$$\frac{\partial^2 P_{\text{det}}}{\partial k^2} = -(1-\rho)^k \,(\ln(1-\rho))^2 < 0 \quad \text{for } \rho\in(0,1).$$
 
-This shows convexity of $(1-\rho)^k$, hence $P_{\text{det}}(k) = 1 - (1-\rho)^k$ is concave. $\square$
+Hence $P_{\text{det}}(k)$ is concave in $k$ (diminishing returns). $\square$
 
 ### 1.2.3 Expected Age of Information
 
@@ -153,17 +153,18 @@ Under stationary conditions with detection probability $P_{\text{det}}(k)$ per s
 
 $$\bar{\Delta}(k) = \frac{1}{P_{\text{det}}(k)} - 1 = \frac{(1-\rho)^k}{1 - (1-\rho)^k}$$
 
-_Proof:_
-The time between successful updates follows a geometric distribution with success probability $P_{\text{det}}(k)$. Let $Y$ be the inter-update time. Then $\mathbb{E}[Y] = 1/P_{\text{det}}(k)$.
+_Proof:_ Let $p := P_{\text{det}}(k)$. The inter-detection time (in slots) is i.i.d. geometric:
+$$Y \sim \mathrm{Geom}(p)\ \text{ on }\{1,2,\dots\}, \quad \mathbb{E}[Y]=\frac{1}{p}.$$
 
-For a renewal process with i.i.d. inter-arrival times, the time-average AoI is (from Yates et al., 2021):
+Over a renewal cycle of length $Y$, the AoI values are $0,1,\dots,Y-1$, hence the cumulative AoI is
+$$\sum_{t=0}^{Y-1} t = \frac{Y(Y-1)}{2}.$$
 
-$$\bar{\Delta} = \frac{\mathbb{E}[Y^2]}{2\mathbb{E}[Y]} = \frac{\mathbb{E}[Y] + 1}{2} \cdot \frac{2(\mathbb{E}[Y]-1)}{\mathbb{E}[Y]} = \mathbb{E}[Y] - 1 + \frac{1}{2}$$
+By renewal-reward theory,
+$$\bar{\Delta}(k)=\frac{\mathbb{E}[Y(Y-1)/2]}{\mathbb{E}[Y]}.$$
 
-For the discrete-time geometric case with our convention:
-$$\bar{\Delta}(k) = \frac{1}{P_{\text{det}}(k)} - 1$$
-
-This follows from the standard result for discrete-time AoI with Bernoulli arrivals (Badia, 2021). $\square$
+For $Y\sim \mathrm{Geom}(p)$, $\mathbb{E}[Y(Y-1)] = \frac{2(1-p)}{p^2}$, thus
+$$\bar{\Delta}(k)=\frac{(1-p)/p^2}{1/p}=\frac{1-p}{p}=\frac{1}{p}-1.$$
+$\square$
 
 **Alternative Form:**
 $$\bar{\Delta}(k) = \frac{1 - P_{\text{det}}(k)}{P_{\text{det}}(k)} = \frac{(1-\rho)^k}{1 - (1-\rho)^k}$$
@@ -179,7 +180,7 @@ $$\bar{\Delta}(k) = \frac{1 - P_{\text{det}}(k)}{P_{\text{det}}(k)} = \frac{(1-\
 
 **Definition:** The marginal AoI reduction from adding one active volunteer is:
 
-$$\delta\bar{\Delta}(k) = \bar{\Delta}(k-1) - \bar{\Delta}(k)$$
+$$\delta\bar{\Delta}(k) = \frac{\rho(1-\rho)^{k-1}}{P_{\text{det}}(k)\cdot P_{\text{det}}(k-1)} = \frac{\rho\,[1-P_{\text{det}}(k-1)]}{P_{\text{det}}(k)\cdot P_{\text{det}}(k-1)}.$$
 
 **Lemma 2:**
 $$\delta\bar{\Delta}(k) = \frac{\rho}{P_{\text{det}}(k) \cdot P_{\text{det}}(k-1)}$$
@@ -343,9 +344,9 @@ This defines a **cost threshold** below which participation is individually rati
 
 **A5 (Heterogeneous Costs):** Costs $c_i$ are drawn i.i.d. from distribution $F$ on $[c_{\min}, c_{\max}]$.
 
-**A6 (Log-Concavity):** The cost distribution $F$ is log-concave, i.e., $\log F(c)$ is concave on $[c_{\min}, c_{\max}]$.
+**A6 (Regularity):** The cost CDF $F$ is continuous and strictly increasing on $[c_{\min}, c_{\max}]$ (equivalently, it admits a density $f(c)>0$ almost everywhere on this interval).
 
-**Remark on A6:** Log-concavity is a mild regularity condition satisfied by most common distributions including: uniform, normal (and truncated normal), exponential (and truncated exponential), logistic, extreme value, and any distribution with log-concave density. It ensures uniqueness of equilibrium (Theorem 5 below).
+**Remark on A6:** This mild regularity implies that the best-response map $\Psi(k)$ is strictly decreasing, which (together with existence) yields uniqueness of equilibrium (Theorem 4 below).
 
 ---
 
@@ -438,20 +439,19 @@ Otherwise, by the Intermediate Value Theorem, there exists $k^* \in (0, N)$ with
 
 ### 2.1.5 Uniqueness of Equilibrium
 
-**Theorem 4 (Uniqueness under Log-Concavity):**
-If $F$ is log-concave, the Nash equilibrium is unique.
+**Theorem 4 (Uniqueness):**
+Under Assumption A6, the Nash equilibrium is unique.
 
 _Proof:_
 We show $\Psi(k)$ crosses the 45° line exactly once.
 
-Compute the derivative:
-$$\Psi'(k) = N \cdot f(B\rho(1-\rho)^k) \cdot B\rho(1-\rho)^k \cdot \ln(1-\rho)$$
+Compute the derivative (when $F$ admits density $f$):
+$$\Psi'(k) = N \cdot f(B\rho(1-\rho)^k)\cdot B\rho(1-\rho)^k \cdot \ln(1-\rho).$$
 
-Since $\ln(1-\rho) < 0$, we have $\Psi'(k) < 0$ whenever $f > 0$, so $\Psi$ is strictly decreasing.
+Since $\ln(1-\rho) < 0$ and $f>0$ on the relevant range, we have $\Psi'(k) < 0$, so $\Psi$ is strictly decreasing.
+A strictly decreasing function can intersect the identity line at most once; combined with existence (Theorem 3), uniqueness follows. $\square$
 
-A strictly decreasing function can cross the identity line at most once. Combined with existence (Theorem 3), uniqueness follows. $\square$
-
-**Remark:** Without log-concavity, multiple equilibria may exist. For example, a bimodal cost distribution could yield both a "low participation" and "high participation" equilibrium.
+**Remark:** If $\Psi$ is only non-increasing (e.g., $F$ has flat regions / discrete mass), the fixed-point equation may admit multiple solutions or even an interval of equilibria.
 
 ### 2.1.6 Computing the Equilibrium
 
@@ -467,11 +467,15 @@ For t = 0, 1, 2, ...:
 Output: k* = k_{t+1}, c̄* = c̄_t
 ```
 
-**Theorem 5 (Convergence):**
-Under log-concavity, Algorithm 1 converges to the unique equilibrium.
+**Theorem 5 (Convergence under Contraction):**
+If $\Psi$ is a contraction on $[0,N]$, i.e., there exists $L<1$ such that
+$$|\Psi(k)-\Psi(k')| \le L|k-k'|\quad \forall k,k'\in[0,N],$$
+then Algorithm 1 converges to the unique equilibrium from any initialization $k_0$.
 
 _Proof:_
-The iteration $k_{t+1} = \Psi(k_t)$ is a contraction mapping when $|\Psi'(k)| < 1$ in a neighborhood of $k^*$. Log-concavity ensures $\Psi$ is strictly decreasing, and for typical parameters, $|\Psi'(k^*)| < 1$. $\square$
+This is a direct application of the Banach fixed-point theorem. $\square$
+
+**Remark:** In our numerical regimes, the simple fixed-point iteration converges reliably; when needed, damping can be used to enforce stability.
 
 ---
 
@@ -526,9 +530,8 @@ $$k^* = \left\lfloor 1 + \frac{\ln(c/B\rho)}{\ln(1-\rho)} \right\rfloor$$
 This recovers the original formula from the homogeneous model.
 
 **Case 2: Full Support ($c_{\min} \to 0$)**
-$$k^* \to N \quad \text{(all volunteers participate)}$$
-
-When some volunteers have near-zero costs, they always participate.
+Participation generally increases as more volunteers have very low costs, but it need not reach $N$.
+In particular, $k^* = N$ only if the cost distribution places (essentially) all mass below the smallest marginal private benefit $B\rho(1-\rho)^{N-1}$; otherwise $k^*<N$.
 
 **Case 3: High Minimum Cost ($c_{\min} > B\rho$)**
 $$k^* = 0 \quad \text{(no participation)}$$

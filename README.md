@@ -11,11 +11,11 @@
 
 ## Abstract
 
-This project analyzes strategic volunteer participation in emergency crowd-finding networks using **Age of Information (AoI)** as the core performance metric. We model the system as a public goods game where rational volunteers balance personal participation costs against shared detection benefits.
+This project analyzes strategic volunteer participation in emergency crowd-finding networks, modeling detection as a public good and timeliness via **Age of Information (AoI)**. We model the system as a public goods game where rational volunteers balance personal participation costs against shared detection benefits.
 
 The main contributions include closed-form expressions for Nash equilibrium and social optimum participation levels, a characterization of the under-participation gap and Price of Anarchy, a Stackelberg incentive mechanism to achieve socially optimal outcomes, and a validated simulation framework with interactive visualization. We also extend the analysis to **heterogeneous costs**, where each volunteer has a private participation cost drawn from a distribution.
 
-**Main finding:** Selfish behavior leads to systematic under-participation, causing up to **70% efficiency loss** in rescue success rate. Platform incentives can fully recover the social optimum.
+**Main finding:** Selfish behavior leads to systematic under-participation, causing up to **53% efficiency loss** in rescue success rate. Platform incentives can fully recover the social optimum.
 
 ---
 
@@ -98,11 +98,11 @@ $$k^{\text{opt}} = \left\lfloor 1 + \frac{\ln(c / NB\rho)}{\ln(1-\rho)} \right\r
 
 **Under-participation gap**:
 
-$$\Delta k = k^{\text{opt}} - k^* \approx \frac{\ln(N)}{\rho}$$
+$$\Delta k = k^{\text{opt}} - k^* \approx \frac{\ln(N)}{-\ln(1-\rho)} \approx \frac{\ln(N)}{\rho}\quad(\rho\ll 1),\;\; \Delta k \le N$$
 
-**Optimal platform incentive** (Stackelberg):
+**Minimum implementing subsidy** (Stackelberg):
 
-$$p^* = c - B\rho(1-\rho)^{k^{\text{opt}}-1}$$
+$$p^* = \max\{0,\;c - B\rho(1-\rho)^{k^{\text{opt}}-1}\}$$
 
 ### Heterogeneous Cost Extension
 
@@ -262,7 +262,7 @@ pytest tests/ -v
 
 ### Validation Results
 
-The static simulation (i.i.d. volunteer positions) validates the analytical P_det formula with less than 1% relative error across all test cases.
+The static simulation (i.i.d. volunteer positions) validates the $P_{\text{det}}(k)$ formula with <1% relative error in the reported cases; the console “Passed” line uses a 10% acceptance threshold.
 
 | k   | P_det (Theory) | P_det (Simulation) | Error |
 | --- | -------------- | ------------------ | ----- |
@@ -283,7 +283,7 @@ With heterogeneous costs (spread ratio $c_{\max}/c_{\min} = 2$), the participati
 <p align="center">
   <img src="https://i.ibb.co/KjRFXYWM/welfare-comparison.png" alt="Cost Sweep Results" width="700"/>
 </p>
-<p align="center"><em>Figure 3: Social welfare comparison. Nash equilibrium welfare collapses as cost increases, while the Stackelberg mechanism successfully recovers the social optimum through platform incentives.</em></p>
+<p align="center"><em>Figure 3: Social welfare comparison. Nash vs. social optimum; platform incentives recover the social optimum in the homogeneous model and recover the socially optimal participation level in expectation under heterogeneous private costs.</em></p>
 
 ---
 
@@ -342,7 +342,7 @@ If you use this work, please cite:
 
 ### Key References
 
-The theoretical foundation builds on Badia's work on Age of Information from multiple strategic sources (IEEE WiOpt, 2021) and freshness in federated data ecosystems (IEEE Trans. Netw. Sci. Eng., 2023). For AoI fundamentals, see Yates et al.'s introduction and survey (IEEE JSAC, 2021). The crowd-finding security model is informed by Heinrich et al.'s analysis of device finding networks (PETS, 2021). Full bibliography available in `paper/references.bib`.
+The theoretical foundation builds primarily on: (i) game-theoretic AoI with strategic sources, (ii) efficiency loss / Price of Anarchy under selfish participation, (iii) Stackelberg incentives for AoI-aware crowdsensing, and (iv) real-world crowd-finding and privacy-preserving object-finding systems. Full bibliography is available in `paper/references.bib`.
 
 ---
 
