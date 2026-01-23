@@ -1,3 +1,8 @@
+"""Unit tests for `src.aoi`.
+
+Focuses on edge cases (P_det in {0,1}), monotonicity in k, and basic trajectory invariants.
+"""
+
 import numpy as np
 import pytest
 

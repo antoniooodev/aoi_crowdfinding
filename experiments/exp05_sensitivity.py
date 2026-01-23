@@ -1,8 +1,15 @@
+"""Experiment 05: Analytical validation and spatial snapshot.
+
+Validates analytical AoI against Monte Carlo simulation for selected k values and produces a single spatial snapshot illustrating one realization.
+
+Outputs:
+    results/data/validation_results.csv
+    results/figures/spatial_snapshot.{pdf,png}
+
+Run:
+    python -m experiments.exp05_sensitivity
 """
-Experiment 4-5: Validation + one spatial snapshot (and optional sensitivity hooks).
-Saves: results/data/validation_results.csv
-Generates: results/figures/spatial_snapshot.{pdf,png}
-"""
+
 
 from __future__ import annotations
 
@@ -35,8 +42,15 @@ def run() -> pd.DataFrame:
     )
 
     k_values = [5, 10, 20, 50, 80]
-    out = validate_analytical(cfg, k_values=k_values, n_runs=300, tolerance=0.05)
-
+    out = validate_analytical(
+        L=float(L),
+        R=float(R),
+        k_values=k_values,
+        T=int(cfg.simulation.T),
+        n_runs=300,
+        tolerance=0.05,
+    )
+    
     df = pd.DataFrame(
         {
             "k": out["k"].astype(int),
@@ -44,7 +58,8 @@ def run() -> pd.DataFrame:
             "simulated_aoi": out["simulated_aoi"].astype(float),
             "simulated_aoi_std": out["simulated_aoi_std"].astype(float),
             "relative_error": out["relative_error"].astype(float),
-            "passed": out["passed"].astype(bool),
+            "passed": out["within_tolerance"].astype(bool),
+            "within_3sigma": out["within_3sigma"].astype(bool),
             "L": float(L),
             "R": float(R),
             "N": int(N),

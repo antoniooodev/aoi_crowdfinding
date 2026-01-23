@@ -1,9 +1,11 @@
-"""
-simulation.py - Monte Carlo simulation engine
+"""Monte Carlo simulation engine.
 
-CORRECTION APPLIED: Target sampled from interior [R, L-R]² to match
-analytical theory (no boundary truncation effects).
+Runs single-trajectory and Monte Carlo simulations for AoI dynamics and provides validation helpers against analytical expressions.
+
+Notes:
+    Target sampling can be restricted to the interior [R, L-R]^2 to match the constant-coverage assumption used in the analytical model.
 """
+
 import numpy as np
 from numpy.typing import NDArray
 from dataclasses import dataclass
@@ -35,43 +37,71 @@ class MonteCarloResult:
 class Simulation:
     """
     Single-run simulation of AoI in crowd-finding scenario.
-    
-    CORRECTION: Target is sampled from interior [R, L-R]² to eliminate
-    boundary effects and match analytical formula P_det(k) = 1 - (1-ρ)^k.
+
+    Notes:
+        When interior_target=True, the target is sampled from the interior
+        [R, L-R]^2 to reduce boundary effects. This matches the analytical
+        assumption behind P_det(k) = 1 - (1 - ρ)^k with ρ = πR^2 / L^2.
     """
-    
     def __init__(
         self,
-        L: float,
-        R: float,
-        T: int = 10000,
+        cfg_or_L=None,
+        R: Optional[float] = None,
+        T: Optional[int] = None,
         seed: Optional[int] = None,
-        interior_target: bool = True
+        interior_target: Optional[bool] = None,
+        **kwargs,
     ):
+        """Initialize a single-run AoI simulation.
+
+        Two calling conventions are supported:
+
+        1) Simulation(cfg: SimConfig)
+           Parameters are taken from cfg.physical and cfg.simulation.
+
+        2) Simulation(L: float, R: float, T: int=..., seed: int|None=..., interior_target: bool=...)
+           Parameters are passed explicitly.
+
+        Keyword compatibility:
+            Simulation(L=..., R=..., ...)
         """
-        Initialize simulation.
-        
-        Parameters
-        ----------
-        L : float
-            Area side length
-        R : float
-            Detection radius
-        T : int
-            Number of time slots
-        seed : int, optional
-            Random seed
-        interior_target : bool
-            If True, sample target from [R, L-R]² (recommended for theory match)
-        """
-        self.L = L
-        self.R = R
-        self.T = T
-        self.seed = seed
-        self.interior_target = interior_target
-        self.rng = np.random.default_rng(seed)
+        # Backward-compatible keyword support: Simulation(L=..., R=..., ...)
+        if cfg_or_L is None and 'L' in kwargs:
+            cfg_or_L = kwargs.pop('L')
+        if R is None and 'R' in kwargs:
+            R = kwargs.pop('R')
+        if kwargs:
+            unexpected = ', '.join(sorted(kwargs.keys()))
+            raise TypeError(f"Unexpected keyword argument(s): {unexpected}")
+
+        # Lazy import to avoid circular import hazards at module import time.
+        try:
+            from .config import SimConfig  # type: ignore
+        except Exception:  # pragma: no cover
+            SimConfig = None  # type: ignore
+
+        if SimConfig is not None and isinstance(cfg_or_L, SimConfig):
+            cfg = cfg_or_L
+            self.L = float(cfg.physical.L)
+            self.R = float(cfg.physical.R)
+            self.T = int(cfg.simulation.T if T is None else T)
+            self.seed = cfg.simulation.seed if seed is None else seed
+            self.interior_target = bool(
+                cfg.simulation.interior_target if interior_target is None else interior_target
+            )
+        else:
+            if cfg_or_L is None or R is None:
+                raise TypeError(
+                    "Simulation(L, R, ...) requires both L and R when the first argument is not a SimConfig"
+                )
+            self.L = float(cfg_or_L)
+            self.R = float(R)
+            self.T = int(10000 if T is None else T)
+            self.seed = seed
+            self.interior_target = bool(True if interior_target is None else interior_target)
+
+        self.rng = np.random.default_rng(self.seed)
         self.reset()
-    
     def reset(self, seed: Optional[int] = None):
         """Reset simulation state."""
         if seed is not None:
@@ -85,8 +115,9 @@ class Simulation:
     def _sample_target(self) -> NDArray[np.float64]:
         """
         Sample target position.
-        
-        CORRECTION: Samples from interior [R, L-R]² when interior_target=True.
+
+        When interior_target=True and feasible (R > 0 and 2R < L), samples from
+        [R, L-R]^2; otherwise samples from [0, L]^2.
         """
         if self.interior_target and self.R > 0 and 2 * self.R < self.L:
             return self.rng.uniform(self.R, self.L - self.R, size=2)
@@ -171,37 +202,60 @@ class MonteCarloSimulation:
     """
     Monte Carlo simulation runner.
     """
-    
     def __init__(
         self,
-        L: float,
-        R: float,
-        T: int = 10000,
-        base_seed: int = 42,
-        interior_target: bool = True
+        cfg_or_L=None,
+        R: Optional[float] = None,
+        T: Optional[int] = None,
+        base_seed: Optional[int] = None,
+        interior_target: Optional[bool] = None,
+        **kwargs,
     ):
+        """Initialize Monte Carlo runner.
+
+        Supports two calling conventions:
+
+        1) MonteCarloSimulation(cfg: SimConfig)
+        2) MonteCarloSimulation(L: float, R: float, T: int=..., base_seed: int=..., interior_target: bool=...)
+
+        Keyword compatibility:
+            MonteCarloSimulation(L=..., R=..., ...)
         """
-        Initialize Monte Carlo runner.
-        
-        Parameters
-        ----------
-        L : float
-            Area side length
-        R : float
-            Detection radius
-        T : int
-            Time slots per run
-        base_seed : int
-            Base random seed
-        interior_target : bool
-            If True, sample target from interior (recommended)
-        """
-        self.L = L
-        self.R = R
-        self.T = T
-        self.base_seed = base_seed
-        self.interior_target = interior_target
-    
+        # Backward-compatible keyword support: MonteCarloSimulation(L=..., R=..., ...)
+        if cfg_or_L is None and 'L' in kwargs:
+            cfg_or_L = kwargs.pop('L')
+        if R is None and 'R' in kwargs:
+            R = kwargs.pop('R')
+        if kwargs:
+            unexpected = ', '.join(sorted(kwargs.keys()))
+            raise TypeError(f"Unexpected keyword argument(s): {unexpected}")
+
+        try:
+            from .config import SimConfig  # type: ignore
+        except Exception:  # pragma: no cover
+            SimConfig = None  # type: ignore
+
+        if SimConfig is not None and isinstance(cfg_or_L, SimConfig):
+            cfg = cfg_or_L
+            self.L = float(cfg.physical.L)
+            self.R = float(cfg.physical.R)
+            self.T = int(cfg.simulation.T if T is None else T)
+            # If cfg.simulation.seed is None, fall back to 0 for deterministic seeding.
+            cfg_seed = 0 if cfg.simulation.seed is None else int(cfg.simulation.seed)
+            self.base_seed = cfg_seed if base_seed is None else int(base_seed)
+            self.interior_target = bool(
+                cfg.simulation.interior_target if interior_target is None else interior_target
+            )
+        else:
+            if cfg_or_L is None or R is None:
+                raise TypeError(
+                    "MonteCarloSimulation(L, R, ...) requires both L and R when the first argument is not a SimConfig"
+                )
+            self.L = float(cfg_or_L)
+            self.R = float(R)
+            self.T = int(10000 if T is None else T)
+            self.base_seed = 42 if base_seed is None else int(base_seed)
+            self.interior_target = bool(True if interior_target is None else interior_target)
     def run(
         self,
         k: int,
@@ -325,9 +379,9 @@ def run_parameter_sweep(
 
 
 def validate_analytical(
-    L: float,
-    R: float,
-    k_values: List[int],
+    cfg_or_L,
+    R: Optional[float] = None,
+    k_values: List[int] = None,
     T: int = 10000,
     n_runs: int = 1000,
     tolerance: float = 0.05,
@@ -335,8 +389,10 @@ def validate_analytical(
 ) -> Dict:
     """
     Validate analytical formulas against simulation.
-    
-    CORRECTION: Uses interior target sampling by default for proper validation.
+
+    Notes:
+        interior_target defaults to True to align the simulation setup with the
+        assumptions used by the closed-form coverage probability.
     
     Parameters
     ----------
@@ -360,6 +416,28 @@ def validate_analytical(
     validation : dict
         Validation results
     """
+    if k_values is None:
+        raise TypeError("validate_analytical(...) requires k_values")
+
+    try:
+        from .config import SimConfig  # type: ignore
+    except Exception:  # pragma: no cover
+        SimConfig = None  # type: ignore
+
+    if SimConfig is not None and isinstance(cfg_or_L, SimConfig):
+        cfg = cfg_or_L
+        L = float(cfg.physical.L)
+        R_val = float(cfg.physical.R)
+        if T == 10000:
+            T = int(cfg.simulation.T)
+        if interior_target is True:
+            interior_target = bool(cfg.simulation.interior_target)
+        R = R_val
+    else:
+        L = float(cfg_or_L)
+        if R is None:
+            raise TypeError("validate_analytical(L, R, ...) requires R when the first argument is not a SimConfig")
+
     from .aoi import expected_aoi_from_k
     
     results = run_parameter_sweep(
@@ -395,6 +473,9 @@ def validate_analytical(
     
     validation['all_within_tolerance'] = np.all(validation['within_tolerance'])
     validation['all_within_3sigma'] = np.all(validation['within_3sigma'])
+    # Backward-compatible aliases used by experiments/tests
+    validation['passed'] = validation['within_tolerance']
+    validation['all_passed'] = bool(validation['all_within_tolerance'])
     
     return validation
 

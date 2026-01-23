@@ -1,9 +1,11 @@
-"""
-spatial.py - 2D spatial computations for crowd-finding
+"""Spatial sampling and coverage probability utilities.
 
-CORRECTION APPLIED: Target sampling in interior [R, L-R]² to match
-analytical assumption that ρ = πR²/L² is constant (no boundary truncation).
+Provides position/target sampling and both analytical and empirical coverage probability calculations.
+
+Notes:
+    Interior target sampling (x,y in [R, L-R]) avoids boundary truncation and matches the analytical assumption rho = pi R^2 / L^2.
 """
+
 import numpy as np
 from numpy.typing import NDArray
 from typing import Tuple, Optional
@@ -43,9 +45,11 @@ def generate_target(
 ) -> NDArray[np.float64]:
     """
     Generate single target position.
-    
-    CORRECTION: When interior=True, samples from [R, L-R]² to eliminate
-    boundary truncation effects, ensuring ρ = πR²/L² is exact.
+
+    Notes:
+        When interior=True, the target is sampled from [R, L-R]^2 (when
+        feasible) to reduce boundary truncation effects, matching the
+        analytical assumption ρ = πR^2 / L^2.
     
     Parameters
     ----------
@@ -69,7 +73,7 @@ def generate_target(
         # Sample from interior to avoid boundary truncation
         return rng.uniform(R, L - R, size=2)
     else:
-        # Full domain sampling (original behavior)
+        # Sample over the full domain
         return rng.uniform(0, L, size=2)
 
 
@@ -181,9 +185,10 @@ def empirical_coverage_prob(
 ) -> Tuple[float, float]:
     """
     Estimate coverage probability via Monte Carlo simulation.
-    
-    CORRECTION: Uses interior target sampling by default to match
-    analytical formula assumptions.
+
+    Notes:
+        interior defaults to True to match the assumptions used by the
+        closed-form coverage probability.
     
     Parameters
     ----------

@@ -1,15 +1,14 @@
-"""
-emergency_simulation.py - Final Corrected Simulation
+"""Emergency simulation demo.
 
-Version 2.0: Added heterogeneous cost model support.
+Runs two modes:
+    1. STATIC: i.i.d. positions each step (useful for validating the closed-form
+       detection probability under the model assumptions).
+    2. DYNAMIC: agent movement (illustrates how mobility interacts with
+       participation).
 
-TWO MODES:
-1. STATIC: i.i.d. positions each step → validates P_det formula exactly
-2. DYNAMIC: agent movement → shows qualitative under-participation effect
-
-TWO COST MODELS:
-1. HOMOGENEOUS: All volunteers have same cost c (original)
-2. HETEROGENEOUS: Volunteers have costs c_i ~ F[c_min, c_max] (new)
+Supports two cost models:
+    1. HOMOGENEOUS: a single common cost c for all volunteers.
+    2. HETEROGENEOUS: volunteer costs c_i sampled from a bounded distribution.
 """
 
 import numpy as np
@@ -88,7 +87,7 @@ class Config:
 
 
 # =============================================================================
-# HOMOGENEOUS MODEL FUNCTIONS (original)
+# HOMOGENEOUS COST MODEL FUNCTIONS
 # =============================================================================
 
 def compute_k_star(N: int, rho: float, B: float, c: float) -> int:
@@ -127,7 +126,7 @@ def analytical_aoi(k: int, rho: float) -> float:
 
 
 # =============================================================================
-# HETEROGENEOUS MODEL FUNCTIONS (new)
+# HETEROGENEOUS COST MODEL FUNCTIONS
 # =============================================================================
 
 def compute_k_star_heterogeneous(N: int, rho: float, B: float, 
@@ -366,7 +365,7 @@ class DynamicSimulation:
 
 
 # =============================================================================
-# INFORMATIVE COST SWEEP - HOMOGENEOUS (original)
+# INFORMATIVE COST SWEEP - HOMOGENEOUS
 # =============================================================================
 
 def run_informative_sweep_homogeneous(config: Config, n_runs: int = 50) -> Dict:
@@ -440,7 +439,7 @@ def run_informative_sweep_homogeneous(config: Config, n_runs: int = 50) -> Dict:
 
 
 # =============================================================================
-# INFORMATIVE COST SWEEP - HETEROGENEOUS (new)
+# INFORMATIVE COST SWEEP - HETEROGENEOUS
 # =============================================================================
 
 def run_informative_sweep_heterogeneous(config: Config, n_runs: int = 50,
@@ -700,7 +699,7 @@ def main(use_heterogeneous: bool = True):
     ----------
     use_heterogeneous : bool
         If True, run both homogeneous and heterogeneous analysis.
-        If False, run only homogeneous (original behavior).
+        If False, run only homogeneous analysis.
     """
     print("="*60)
     print("EMERGENCY CROWD-FINDING SIMULATION")

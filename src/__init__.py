@@ -1,26 +1,13 @@
+"""AoI Crowd-Finding package.
+
+Core library for the game-theoretic crowd-finding model and simulations, using Age of Information as the performance metric.
+
+Public modules: config, spatial, aoi, game, simulation, stackelberg, visualization.
+
+Notes:
+    v1.1 fixes: target is sampled from the interior [R, L-R]^2; cost ranges are derived from model thresholds; PoA plots mask infinite values (k*=0); Stackelberg incentives use a small epsilon for discrete tie-breaking.
 """
-AoI Crowd-Finding: Game-Theoretic Analysis of Age of Information
-in Emergency Search Networks
 
-This package implements the theoretical model and simulation for analyzing
-strategic volunteer participation in crowd-finding networks using Age of
-Information as the performance metric.
-
-Modules:
-    config - Configuration and parameter management
-    spatial - 2D geometry and coverage calculations
-    aoi - Age of Information computations
-    game - Game theory (Nash equilibrium, social optimum, PoA)
-    simulation - Monte Carlo simulation engine
-    stackelberg - Stackelberg game with platform incentives
-    visualization - Publication-quality plotting
-
-CORRECTIONS APPLIED (v1.1):
-    1. Target sampled from interior [R, L-R]² to match analytical theory
-    2. Cost ranges computed adaptively based on thresholds (Bρ, NBρ)
-    3. PoA heatmap masks infinite values (where k*=0)
-    4. Stackelberg incentive uses epsilon for robust discrete equilibrium
-"""
 
 from .config import (
     SimConfig,

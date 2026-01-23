@@ -1,3 +1,8 @@
+"""Unit tests for `src.game`.
+
+Checks utility relationships, Nash equilibrium correctness, and consistency between closed-form and search-based computations.
+"""
+
 import numpy as np
 import pytest
 from src.game import *

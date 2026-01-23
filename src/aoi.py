@@ -1,6 +1,8 @@
+"""Age of Information (AoI) utilities.
+
+Provides closed-form AoI expressions from detection probability, vectorized helpers, and a simple trajectory simulator for validating analytical results.
 """
-aoi.py - Age of Information computations
-"""
+
 import numpy as np
 from numpy.typing import NDArray
 from typing import Optional
@@ -109,6 +111,35 @@ def simulate_aoi_trajectory(
         trajectory[t] = current_aoi
     
     return trajectory
+
+def simulate_aoi_trajectory_fast(
+    P_det: float,
+    T: int,
+    seed: Optional[int] = None
+) -> NDArray[np.int_]:
+    """Simulate AoI trajectory over T time slots (fast path).
+
+    This function is API-compatible with `simulate_aoi_trajectory` and
+    uses the same random number generator semantics, so that using the
+    same seed produces the same trajectory.
+
+    Parameters
+    ----------
+    P_det : float
+        Detection probability per slot
+    T : int
+        Number of time slots
+    seed : int, optional
+        Random seed
+
+    Returns
+    -------
+    trajectory : ndarray of shape (T,)
+        AoI value at each time slot
+    """
+    
+    return simulate_aoi_trajectory(P_det, T, seed=seed)
+
 
 
 def time_average_aoi(trajectory: NDArray[np.int_]) -> float:

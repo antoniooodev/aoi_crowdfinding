@@ -1,9 +1,11 @@
-"""
-visualization.py - Publication-quality plotting utilities
+"""Plotting utilities for experiments.
 
-CORRECTION APPLIED: PoA heatmap masks infinite values (where k*=0)
-to show meaningful variation instead of saturated plot.
+Contains plotting helpers used to generate publication-ready figures from experiment outputs.
+
+Notes:
+    PoA heatmaps mask or clip infinite values (typically when k* = 0) to keep plots interpretable.
 """
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -209,8 +211,10 @@ def plot_poa_heatmap(
 ) -> Tuple[Figure, Axes]:
     """
     Plot Price of Anarchy heatmap.
-    
-    CORRECTION: Masks infinite values (where k*=0) to show meaningful variation.
+
+    Notes:
+        When mask_infinite=True, cells with infinite PoA (e.g., k*=0) are masked
+        to keep the visualization interpretable.
     
     Parameters
     ----------

@@ -1,3 +1,8 @@
+"""Unit tests for `src.simulation`.
+
+Validates single-run and Monte Carlo outputs (shapes, basic invariants) and cross-checks summary statistics.
+"""
+
 import numpy as np
 
 from src.config import PhysicalParams, SimulationParams, SimConfig

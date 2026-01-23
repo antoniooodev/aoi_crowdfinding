@@ -1,9 +1,8 @@
-"""
-config.py - Configuration management for AoI crowd-finding simulation
+"""Configuration and parameter helpers.
 
-CORRECTION APPLIED: Adaptive cost ranges based on model thresholds (Bρ, NBρ)
-to ensure experiments cover informative parameter regimes.
+Defines dataclasses for physical, game, and simulation parameters, plus utility helpers used by experiments (including cost-range suggestions derived from model thresholds).
 """
+
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 import numpy as np
@@ -105,9 +104,10 @@ def compute_informative_cost_range(
 ) -> np.ndarray:
     """
     Compute cost range that produces informative results.
-    
-    CORRECTION: Instead of arbitrary [0.1, 10], sweep costs around
-    the actual thresholds Bρ (for NE) or NBρ (for social optimum).
+
+    Costs are swept around the relevant participation threshold (Bρ for Nash
+    equilibrium, NBρ for social optimum) rather than using a fixed arbitrary
+    range.
     
     Parameters
     ----------
@@ -204,8 +204,9 @@ def compute_normalized_cost_range(
 class ExperimentGrid:
     """
     Parameter grid for experiments.
-    
-    CORRECTION: Cost values computed adaptively based on thresholds.
+
+    Notes:
+        Cost grids are derived from the relevant participation thresholds.
     """
     N_values: List[int] = field(default_factory=lambda: [50, 100, 200])
     R_L_ratios: List[float] = field(default_factory=lambda: [0.05, 0.10, 0.15])

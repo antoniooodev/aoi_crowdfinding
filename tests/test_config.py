@@ -1,3 +1,8 @@
+"""Unit tests for `src.config`.
+
+Covers parameter validation and derived properties (e.g., rho).
+"""
+
 import numpy as np
 import pytest
 from src.config import PhysicalParams, GameParams, SimulationParams, SimConfig

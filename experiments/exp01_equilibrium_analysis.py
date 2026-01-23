@@ -1,8 +1,15 @@
+"""Experiment 01: Equilibrium and social optimum vs cost.
+
+Sweeps cost `c` over a parameter grid and compares the Nash equilibrium participation k* against the socially optimal participation k_opt.
+
+Outputs:
+    results/data/equilibrium_analysis.csv
+    results/figures/equilibrium_vs_cost.{pdf,png}
+
+Run:
+    python -m experiments.exp01_equilibrium_analysis
 """
-Experiment 1: Equilibrium analysis (k* and k_opt vs c) across parameter grids.
-Saves: results/data/equilibrium_analysis.csv
-Generates: results/figures/equilibrium_vs_cost.{pdf,png}
-"""
+
 
 from __future__ import annotations
 

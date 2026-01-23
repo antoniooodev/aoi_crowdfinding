@@ -1,3 +1,9 @@
+/**
+ * App
+ *
+ * Thin wrapper around the emergency demo UI.
+ */
+
 import "./App.css";
 import EmergencyVisualization from "./emergency_visualization.jsx";
 

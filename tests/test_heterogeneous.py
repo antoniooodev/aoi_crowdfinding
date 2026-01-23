@@ -1,13 +1,8 @@
-"""
-test_heterogeneous.py - Unit tests for heterogeneous cost model
+"""Unit tests for heterogeneous cost extensions.
 
-Tests:
-1. HeterogeneousCostParams: CDF, PDF, quantile, sampling
-2. Nash equilibrium: corner cases, interior equilibrium, monotonicity
-3. Social optimum: greedy selection, order statistics
-4. Price of Anarchy: bounds, comparison with homogeneous
-5. Stackelberg: incentive correctness, budget constraints
+Covers heterogeneous cost distributions, equilibrium/optimum routines, PoA computations, and incentive behavior under heterogeneity.
 """
+
 
 import numpy as np
 import pytest

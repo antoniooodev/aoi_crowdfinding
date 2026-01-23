@@ -1,6 +1,8 @@
+"""Game-theoretic model utilities.
+
+Implements utilities, equilibrium/optimum computation, welfare metrics, and Price of Anarchy calculations for volunteer participation in the crowd-finding model.
 """
-game.py - Game theory computations for crowd-finding
-"""
+
 import numpy as np
 from numpy.typing import NDArray
 from typing import Dict, Tuple, Optional

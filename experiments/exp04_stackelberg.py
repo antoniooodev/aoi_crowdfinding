@@ -1,9 +1,16 @@
+"""Experiment 04: Stackelberg incentive design.
+
+For each (N, R/L, c) setting, computes an incentive p* that induces a participation level close to the social optimum and compares welfare across regimes.
+
+Outputs:
+    results/data/stackelberg_analysis.csv
+    results/figures/stackelberg_incentive.{pdf,png}
+    results/figures/welfare_comparison.{pdf,png}
+
+Run:
+    python -m experiments.exp04_stackelberg
 """
-Experiment 3: Stackelberg incentives.
-Saves: results/data/stackelberg_analysis.csv
-Generates: results/figures/stackelberg_incentive.{pdf,png}
-Generates: results/figures/welfare_comparison.{pdf,png}
-"""
+
 
 from __future__ import annotations
 

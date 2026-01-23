@@ -1,7 +1,11 @@
+"""Run the full experiment suite.
+
+Usage (from repo root):
+    python -m experiments.run_all
+
+This script executes each experiment module and writes results under `results/` (CSV data and figures).
 """
-Run all experiments and generate all required outputs.
-Usage (from repo root): python -m experiments.run_all
-"""
+
 
 from .exp01_equilibrium_analysis import run as run_exp01
 from .exp02_social_optimum import run as run_exp02

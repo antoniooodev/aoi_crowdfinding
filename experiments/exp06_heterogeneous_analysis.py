@@ -1,18 +1,17 @@
-"""
-exp06_heterogeneous_analysis.py - Heterogeneous Cost Model Analysis
+"""Experiment 06: Heterogeneous cost model analysis.
 
-Compares homogeneous vs heterogeneous cost models:
-1. Effect of heterogeneity ratio on equilibrium
-2. Participation gap comparison
-3. Price of Anarchy comparison
-4. Stackelberg incentive comparison
+Compares homogeneous and heterogeneous cost models across a heterogeneity sweep, including equilibrium participation, welfare/PoA, and Stackelberg incentives.
 
 Outputs:
-- results/figures/exp06_heterogeneity_comparison.pdf
-- results/figures/exp06_poa_vs_heterogeneity.pdf
-- results/figures/exp06_incentive_comparison.pdf
-- results/data/exp06_heterogeneous_analysis.csv
+    results/data/exp06_heterogeneous_analysis.csv
+    results/figures/exp06_heterogeneity_comparison.pdf
+    results/figures/exp06_poa_vs_heterogeneity.pdf
+    results/figures/exp06_incentive_comparison.pdf
+
+Run:
+    python -m experiments.exp06_heterogeneous_analysis
 """
+
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -20,7 +19,6 @@ import pandas as pd
 import os
 import sys
 
-# Add parent directory for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.config import (

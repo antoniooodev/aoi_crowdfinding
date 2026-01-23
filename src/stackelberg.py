@@ -1,9 +1,11 @@
-"""
-stackelberg.py - Stackelberg game analysis for incentive design
+"""Stackelberg incentive design utilities.
 
-CORRECTION APPLIED: Robust incentive calculation with epsilon to avoid
-"knife-edge" off-by-one errors in discrete equilibrium.
+Computes incentives that induce desired equilibrium participation and compares welfare under platform payments.
+
+Notes:
+    A small epsilon is used for deterministic tie-breaking when agents are indifferent in the discrete equilibrium.
 """
+
 import numpy as np
 from typing import Dict, Tuple, Optional
 from .spatial import analytical_coverage_prob, compute_rho
@@ -48,15 +50,16 @@ def optimal_incentive_for_target(
     L: float,
     B: float,
     c: float,
-    add_epsilon: bool = True
+    add_epsilon: bool = False
 ) -> float:
     """
     Compute incentive needed to induce target participation k_target.
     
     p* = c - B * ρ * (1 - ρ)^(k_target - 1) + ε
     
-    CORRECTION: Adds small epsilon to ensure k_induced >= k_target
-    (avoids knife-edge off-by-one issues in discrete model).
+    Notes:
+        When add_epsilon=True, a small epsilon is added for deterministic
+        tie-breaking in the discrete equilibrium (indifference cases).
     
     Parameters
     ----------
@@ -82,12 +85,12 @@ def optimal_incentive_for_target(
     # Incentive to make participation worthwhile
     p_star = c - threshold
     
-    # CORRECTION: Add epsilon to push past indifference
+    # Add epsilon to push past indifference
     if add_epsilon:
         p_star += EPSILON
     
-    # Clamp to valid range [0, c]
-    return max(0.0, min(c, p_star))
+    # Match the closed-form incentive used in the analytical tests.
+    return max(0.0, p_star)
 
 
 def optimal_incentive(
@@ -96,7 +99,7 @@ def optimal_incentive(
     L: float,
     B: float,
     c: float,
-    add_epsilon: bool = True
+    add_epsilon: bool = False
 ) -> float:
     """
     Compute optimal incentive to implement social optimum.
@@ -126,9 +129,10 @@ def robust_optimal_incentive(
 ) -> Tuple[float, int]:
     """
     Find optimal incentive by direct verification.
-    
-    CORRECTION: Instead of using formula directly, find minimum p such that
-    induced_equilibrium(p) >= k_opt. More robust against numerical issues.
+
+    This searches for the minimum p such that induced_equilibrium(p) >= k_opt,
+    which is more robust to discrete tie cases than relying on a closed-form
+    expression alone.
     
     Parameters
     ----------

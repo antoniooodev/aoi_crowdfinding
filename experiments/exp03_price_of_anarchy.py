@@ -1,8 +1,15 @@
+"""Experiment 03: Price of Anarchy over (N, c).
+
+Computes welfare at the Nash equilibrium and the social optimum across a grid and visualizes the Price of Anarchy.
+
+Outputs:
+    results/data/poa_grid.csv
+    results/figures/poa_heatmap.{pdf,png}
+
+Run:
+    python -m experiments.exp03_price_of_anarchy
 """
-Experiment 2: Price of Anarchy heatmap over (N, c).
-Saves: results/data/poa_grid.csv
-Generates: results/figures/poa_heatmap.{pdf,png}
-"""
+
 
 from __future__ import annotations
 

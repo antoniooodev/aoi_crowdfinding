@@ -1,3 +1,8 @@
+"""Unit tests for `src.stackelberg`.
+
+Verifies induced equilibrium mechanics and closed-form components used by the incentive routines.
+"""
+
 import numpy as np
 
 from src.game import find_nash_equilibrium, find_social_optimum

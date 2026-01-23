@@ -43,11 +43,11 @@ git clone https://github.com/antoniooodev/aoi_crowdfinding.git
 cd aoi_crowdfinding
 pip install -r requirements.txt
 
+# Install the project in editable mode (so src is importable from anywhere):
+python3 -m pip install -e .
+
 # Run validation and generate figures
 python demos/emergency/emergency_simulation.py
-
-# Compile paper
-cd paper && pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex
 ```
 
 ---
@@ -131,7 +131,7 @@ aoi_crowdfinding/
 │   ├── game.py                      # Nash, social optimum, PoA (both models)
 │   ├── stackelberg.py               # Incentive mechanism design
 │   ├── simulation.py                # Monte Carlo validation engine
-│   └── visualization.py             # IEEE-style plotting utilities
+│   └── visualization.py             # Plotting utilities
 │
 ├── experiments/                     # Reproducible experiments
 │   ├── exp01_equilibrium_analysis.py
@@ -187,6 +187,9 @@ source venv/bin/activate  # Linux/macOS
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Install the project in editable mode (so src is importable from anywhere):
+python3 -m pip install -e .
 ```
 
 ### Dependencies
@@ -241,14 +244,7 @@ Figures saved to results/figures/
 python -m experiments.run_all
 ```
 
-This runs experiments 01–06 and generates all figures for the paper.
-
-### Compile Paper
-
-```bash
-cd paper
-pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex
-```
+This runs experiments 01–06 and generates all figures used for the paper.
 
 ### Run Tests
 
@@ -323,26 +319,6 @@ Copy the visualization component to [CodeSandbox](https://codesandbox.io) or [St
 ### Simulation Methodology
 
 The framework distinguishes between validation and demonstration modes. **Static simulation** uses i.i.d. positions each step with a fixed target to validate the P_det formula exactly. **Dynamic simulation** uses correlated positions (agent movement) with a mobile target to show qualitative effects in realistic scenarios. This separation is critical because the analytical model assumes independent positions, which the dynamic simulation intentionally violates to demonstrate real-world relevance.
-
----
-
-## Citation
-
-If you use this work, please cite:
-
-```bibtex
-@misc{tangaro2025aoi,
-  author       = {Tangaro, Antonio},
-  title        = {{AoI}-Aware Emergency Crowd-Finding: A Game-Theoretic Analysis},
-  year         = {2026},
-  institution  = {University of Padova},
-  note         = {Game Theory Course Project, supervised by Prof. Leonardo Badia}
-}
-```
-
-### Key References
-
-The theoretical foundation builds primarily on: (i) game-theoretic AoI with strategic sources, (ii) efficiency loss / Price of Anarchy under selfish participation, (iii) Stackelberg incentives for AoI-aware crowdsensing, and (iv) real-world crowd-finding and privacy-preserving object-finding systems. Full bibliography is available in `paper/references.bib`.
 
 ---
 

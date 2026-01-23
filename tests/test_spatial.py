@@ -1,3 +1,8 @@
+"""Unit tests for `src.spatial`.
+
+Validates sampling bounds/reproducibility and checks that empirical coverage matches the analytical expression within tolerance.
+"""
+
 import numpy as np
 
 from src.spatial import (
