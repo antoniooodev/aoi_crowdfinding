@@ -249,7 +249,7 @@ This runs experiments 01–06 and generates all figures used for the paper.
 ### Run Tests
 
 ```bash
-pytest tests/ -v
+python -m pytest -q
 ```
 
 ---
