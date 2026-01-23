@@ -42,14 +42,8 @@ def run() -> pd.DataFrame:
     )
 
     k_values = [5, 10, 20, 50, 80]
-    out = validate_analytical(
-        L=float(L),
-        R=float(R),
-        k_values=k_values,
-        T=int(cfg.simulation.T),
-        n_runs=300,
-        tolerance=0.05,
-    )
+    out = validate_analytical(cfg, k_values=k_values, n_runs=300, tolerance=0.05)
+    
     
     df = pd.DataFrame(
         {
